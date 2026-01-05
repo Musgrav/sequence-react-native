@@ -5,30 +5,29 @@ Beautiful onboarding flows for React Native apps. Display onboarding exactly as 
 ## Installation
 
 ```bash
-npm install @anthropic/sequence-react-native
-# or
-yarn add @anthropic/sequence-react-native
+npm install sequence-react-native react-native-safe-area-context @react-native-async-storage/async-storage
 ```
 
-### Peer Dependencies
-
-The SDK requires the following peer dependencies:
-
+For Expo:
 ```bash
-npm install react-native-safe-area-context react-native-reanimated @react-native-async-storage/async-storage @react-native-community/slider react-native-svg react-native-linear-gradient
+npx expo install sequence-react-native react-native-safe-area-context @react-native-async-storage/async-storage
 ```
 
-For Expo projects:
-```bash
-npx expo install react-native-safe-area-context react-native-reanimated @react-native-async-storage/async-storage @react-native-community/slider react-native-svg expo-linear-gradient expo-haptics
-```
+### Optional Dependencies
+
+These are only needed if your flows use specific features:
+
+- `@react-native-community/slider` - For slider input components (uses built-in fallback if not installed)
+- `react-native-svg` - For ring-style progress indicators (falls back to bar style)
+- `react-native-linear-gradient` / `expo-linear-gradient` - For gradient backgrounds
+- `expo-haptics` - For haptic feedback on checklist selections
 
 ## Quick Start
 
 ### 1. Wrap your app with SequenceProvider
 
 ```tsx
-import { SequenceProvider } from '@anthropic/sequence-react-native';
+import { SequenceProvider } from 'sequence-react-native';
 
 export default function App() {
   return (
@@ -48,7 +47,7 @@ export default function App() {
 
 ```tsx
 import { useState } from 'react';
-import { OnboardingModal, useShouldShowOnboarding } from '@anthropic/sequence-react-native';
+import { OnboardingModal, useShouldShowOnboarding } from 'sequence-react-native';
 
 function YourApp() {
   const shouldShowOnboarding = useShouldShowOnboarding();
@@ -78,7 +77,7 @@ function YourApp() {
 For more control, use the `FlowRenderer` component directly:
 
 ```tsx
-import { FlowRenderer, useSequence } from '@anthropic/sequence-react-native';
+import { FlowRenderer, useSequence } from 'sequence-react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 function OnboardingScreen() {
@@ -148,7 +147,7 @@ Register custom block types to extend the SDK:
 Configure the SDK manually for more control:
 
 ```tsx
-import { Sequence, SequenceProvider } from '@anthropic/sequence-react-native';
+import { Sequence, SequenceProvider } from 'sequence-react-native';
 
 // Configure manually (useful for dynamic configuration)
 await Sequence.configure({
@@ -269,7 +268,7 @@ The SDK automatically tracks these events:
 For custom tracking:
 
 ```tsx
-import { Sequence } from '@anthropic/sequence-react-native';
+import { Sequence } from 'sequence-react-native';
 
 Sequence.track('custom_event', 'screen-id', {
   custom_property: 'value',
@@ -296,7 +295,7 @@ The SDK scales content to match the design canvas (iPhone 15 Pro dimensions: 393
 For custom styling utilities:
 
 ```tsx
-import { scale, getStylingStyles, getScaleFactor } from '@anthropic/sequence-react-native';
+import { scale, getStylingStyles, getScaleFactor } from 'sequence-react-native';
 
 // Scale a pixel value
 const scaledPadding = scale(24); // Scales 24px to device
@@ -319,7 +318,7 @@ import type {
   OnboardingConfig,
   CollectedData,
   ButtonAction,
-} from '@anthropic/sequence-react-native';
+} from 'sequence-react-native';
 ```
 
 ## Requirements

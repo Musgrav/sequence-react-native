@@ -39,7 +39,7 @@ export function ImageBlock({ content, styling }: ImageBlockProps) {
   const resizeMode = objectFit === 'contain' ? 'contain' : objectFit === 'fill' ? 'stretch' : 'cover';
 
   const imageStyle: ImageStyle = {
-    width: imageWidth,
+    width: typeof imageWidth === 'string' ? imageWidth as ImageStyle['width'] : imageWidth,
     height: imageHeight === 'auto' ? undefined : imageHeight,
     borderRadius: scale(borderRadius),
     resizeMode,

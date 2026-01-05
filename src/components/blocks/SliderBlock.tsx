@@ -1,9 +1,31 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import Slider from '@react-native-community/slider';
-import type { ViewStyle, TextStyle } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, PanResponder } from 'react-native';
+import type { ViewStyle, TextStyle, GestureResponderEvent, PanResponderGestureState } from 'react-native';
 import type { SliderBlockContent, BlockStyling } from '../../types';
 import { getStylingStyles, getFontWeight, scale } from '../../utils/styles';
+
+// Try to use @react-native-community/slider
+interface SliderComponent {
+  (props: {
+    style?: ViewStyle;
+    minimumValue: number;
+    maximumValue: number;
+    step: number;
+    value: number;
+    onValueChange: (value: number) => void;
+    minimumTrackTintColor?: string;
+    maximumTrackTintColor?: string;
+    thumbTintColor?: string;
+  }): React.ReactElement;
+}
+
+let Slider: SliderComponent | null = null;
+try {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  Slider = require('@react-native-community/slider').default;
+} catch {
+  // Slider not available - we'll use a fallback UI
+}
 
 interface SliderBlockProps {
   content: SliderBlockContent;
@@ -87,17 +109,46 @@ export function SliderBlock({
       )}
 
       <View style={styles.sliderContainer}>
-        <Slider
-          style={styles.slider}
-          minimumValue={min}
-          maximumValue={max}
-          step={step}
-          value={currentValue}
-          onValueChange={handleValueChange}
-          minimumTrackTintColor={fillColor}
-          maximumTrackTintColor={trackColor}
-          thumbTintColor={thumbColor}
-        />
+        {Slider ? (
+          <Slider
+            style={styles.slider}
+            minimumValue={min}
+            maximumValue={max}
+            step={step}
+            value={currentValue}
+            onValueChange={handleValueChange}
+            minimumTrackTintColor={fillColor}
+            maximumTrackTintColor={trackColor}
+            thumbTintColor={thumbColor}
+          />
+        ) : (
+          // Fallback: simple + / - buttons when slider package not installed
+          <View style={styles.fallbackContainer}>
+            <TouchableOpacity
+              style={[styles.fallbackButton, { backgroundColor: trackColor }]}
+              onPress={() => handleValueChange(Math.max(min, currentValue - step))}
+            >
+              <Text style={styles.fallbackButtonText}>−</Text>
+            </TouchableOpacity>
+            <View style={[styles.fallbackTrack, { backgroundColor: trackColor }]}>
+              <View
+                style={[
+                  styles.fallbackFill,
+                  {
+                    backgroundColor: fillColor,
+                    width: `${((currentValue - min) / (max - min)) * 100}%`,
+                  },
+                ]}
+              />
+            </View>
+            <TouchableOpacity
+              style={[styles.fallbackButton, { backgroundColor: trackColor }]}
+              onPress={() => handleValueChange(Math.min(max, currentValue + step))}
+            >
+              <Text style={styles.fallbackButtonText}>+</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
 
       {showMinMax && (
@@ -133,6 +184,35 @@ const styles = StyleSheet.create({
   slider: {
     width: '100%',
     height: 40,
+  },
+  fallbackContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+    height: 40,
+  },
+  fallbackButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fallbackButtonText: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: '#333',
+  },
+  fallbackTrack: {
+    flex: 1,
+    height: 8,
+    borderRadius: 4,
+    marginHorizontal: 12,
+    overflow: 'hidden',
+  },
+  fallbackFill: {
+    height: '100%',
+    borderRadius: 4,
   },
   minMaxContainer: {
     flexDirection: 'row',

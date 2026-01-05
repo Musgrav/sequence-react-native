@@ -7,9 +7,21 @@ import {
   Platform,
 } from 'react-native';
 import type { ViewStyle, TextStyle } from 'react-native';
-import * as Haptics from 'expo-haptics';
 import type { ChecklistBlockContent, BlockStyling, ButtonAction } from '../../types';
 import { getStylingStyles, scale, createShadowStyle } from '../../utils/styles';
+
+// Optional haptics support - dynamically imported
+interface HapticsModule {
+  impactAsync: (style: unknown) => Promise<void>;
+  ImpactFeedbackStyle: { Light: unknown; Medium: unknown; Heavy: unknown };
+}
+let Haptics: HapticsModule | null = null;
+try {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  Haptics = require('expo-haptics') as HapticsModule;
+} catch {
+  // expo-haptics not available
+}
 
 interface ChecklistBlockProps {
   content: ChecklistBlockContent;
@@ -60,7 +72,7 @@ export function ChecklistBlock({
 
   const handleItemPress = async (itemId: string) => {
     // Trigger haptic feedback
-    if (hapticEnabled && Platform.OS !== 'web') {
+    if (hapticEnabled && Platform.OS !== 'web' && Haptics) {
       try {
         const impactStyle =
           hapticIntensity === 'heavy'

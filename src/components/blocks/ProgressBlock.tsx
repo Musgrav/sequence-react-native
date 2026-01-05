@@ -1,9 +1,31 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import type { ViewStyle, TextStyle } from 'react-native';
-import Svg, { Circle } from 'react-native-svg';
 import type { ProgressBlockContent, BlockStyling } from '../../types';
 import { getStylingStyles, scale } from '../../utils/styles';
+
+// Optional SVG support for ring variant
+let Svg: React.ComponentType<{ width: number; height: number; children?: React.ReactNode }> | null = null;
+let Circle: React.ComponentType<{
+  cx: number;
+  cy: number;
+  r: number;
+  stroke: string;
+  strokeWidth: number;
+  fill: string;
+  strokeLinecap?: string;
+  strokeDasharray?: number;
+  strokeDashoffset?: number;
+  transform?: string;
+}> | null = null;
+try {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const svg = require('react-native-svg');
+  Svg = svg.Svg || svg.default;
+  Circle = svg.Circle;
+} catch {
+  // react-native-svg not available, ring variant will fall back to bar
+}
 
 interface ProgressBlockProps {
   content: ProgressBlockContent;
@@ -150,8 +172,37 @@ export function ProgressBlock({
     );
   }
 
-  // Ring variant
+  // Ring variant (requires react-native-svg, falls back to bar if not available)
   if (variant === 'ring') {
+    if (!Svg || !Circle) {
+      // Fall back to bar variant if SVG not available
+      return (
+        <View style={containerStyle}>
+          <View
+            style={[
+              styles.barTrack,
+              { height: scale(height), backgroundColor: trackColor },
+            ]}
+          >
+            <View
+              style={[
+                styles.barFill,
+                {
+                  width: `${progress * 100}%`,
+                  backgroundColor: fillColor,
+                },
+              ]}
+            />
+          </View>
+          {showPercentage && (
+            <Text style={styles.percentageText}>
+              {Math.round(progress * 100)}%
+            </Text>
+          )}
+        </View>
+      );
+    }
+
     const ringSize = scale(size);
     const ringStrokeWidth = scale(strokeWidth);
     const radius = (ringSize - ringStrokeWidth) / 2;

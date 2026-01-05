@@ -84,7 +84,7 @@ export function ContentBlockRenderer({
   }
 
   // Get animation styles
-  const getAnimationStyle = (): Animated.AnimatedProps<ViewStyle>['style'] => {
+  const getAnimationStyle = () => {
     if (!animation || animation.type === 'none') {
       return {};
     }

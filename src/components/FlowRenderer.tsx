@@ -24,7 +24,23 @@ import { scale, getStylingStyles, parseGradient } from '../utils/styles';
 import { ContentBlockRenderer } from './ContentBlockRenderer';
 import { FlowProgressBar } from './FlowProgressBar';
 import { Sequence } from '../SequenceClient';
-import LinearGradient from 'react-native-linear-gradient';
+
+// Optional linear gradient support - try react-native-linear-gradient first, then expo-linear-gradient
+let LinearGradient: React.ComponentType<{
+  colors: string[];
+  start?: { x: number; y: number };
+  end?: { x: number; y: number };
+  style?: ViewStyle;
+}> | null = null;
+try {
+  LinearGradient = require('react-native-linear-gradient').default;
+} catch {
+  try {
+    LinearGradient = require('expo-linear-gradient').LinearGradient;
+  } catch {
+    // No gradient support available
+  }
+}
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -389,14 +405,14 @@ export function FlowRenderer({
     const content = currentScreen?.content;
     if (!content) return null;
 
-    if (content.backgroundGradient) {
+    if (content.backgroundGradient && LinearGradient) {
       const { colors, start, end } = parseGradient(content.backgroundGradient);
       return (
         <LinearGradient
           colors={colors}
           start={start}
           end={end}
-          style={StyleSheet.absoluteFill}
+          style={StyleSheet.absoluteFill as ViewStyle}
         />
       );
     }
