@@ -5,7 +5,6 @@ import {
   StyleSheet,
   Dimensions,
   Animated,
-  Platform,
   StatusBar,
 } from 'react-native';
 import type { ViewStyle } from 'react-native';
@@ -20,27 +19,11 @@ import type {
   CollectedData,
 } from '../types';
 import { DESIGN_CANVAS } from '../types';
-import { scale, getStylingStyles, parseGradient } from '../utils/styles';
+import { scale, parseGradient } from '../utils/styles';
 import { ContentBlockRenderer } from './ContentBlockRenderer';
 import { FlowProgressBar } from './FlowProgressBar';
 import { Sequence } from '../SequenceClient';
-
-// Optional linear gradient support - try react-native-linear-gradient first, then expo-linear-gradient
-let LinearGradient: React.ComponentType<{
-  colors: string[];
-  start?: { x: number; y: number };
-  end?: { x: number; y: number };
-  style?: ViewStyle;
-}> | null = null;
-try {
-  LinearGradient = require('react-native-linear-gradient').default;
-} catch {
-  try {
-    LinearGradient = require('expo-linear-gradient').LinearGradient;
-  } catch {
-    // No gradient support available
-  }
-}
+import { LinearGradient } from './LinearGradient';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -372,7 +355,30 @@ export function FlowRenderer({
 
           {/* Pinned blocks at bottom */}
           {pinnedBlocks.length > 0 && (
-            <View style={[styles.pinnedContainer, { paddingBottom: insets.bottom + scale(20) }]}>
+            <View
+              style={[
+                styles.pinnedContainer,
+                {
+                  paddingBottom: insets.bottom + scale(20),
+                  // Use screen's background color with opacity, or transparent if gradient
+                  backgroundColor: content.backgroundGradient
+                    ? 'transparent'
+                    : content.backgroundColor
+                    ? `${content.backgroundColor}F2` // ~95% opacity
+                    : 'rgba(255, 255, 255, 0.95)',
+                },
+              ]}
+            >
+              {/* Fade gradient above pinned blocks - only show if there's a solid background */}
+              {!content.backgroundGradient && (
+                <LinearGradient
+                  colors={[
+                    'transparent',
+                    content.backgroundColor || 'rgba(255, 255, 255, 1)',
+                  ]}
+                  style={styles.pinnedFadeGradient}
+                />
+              )}
               {pinnedBlocks.map((block) => (
                 <ContentBlockRenderer
                   key={block.id}
@@ -405,7 +411,7 @@ export function FlowRenderer({
     const content = currentScreen?.content;
     if (!content) return null;
 
-    if (content.backgroundGradient && LinearGradient) {
+    if (content.backgroundGradient) {
       const { colors, start, end } = parseGradient(content.backgroundGradient);
       return (
         <LinearGradient
@@ -492,7 +498,14 @@ const styles = StyleSheet.create({
     right: 0,
     paddingHorizontal: 24,
     paddingTop: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    // backgroundColor is set dynamically to match screen background
+  },
+  pinnedFadeGradient: {
+    position: 'absolute',
+    top: -60,
+    left: 0,
+    right: 0,
+    height: 60,
   },
   legacyContent: {
     flex: 1,

@@ -8,7 +8,16 @@ import {
 } from 'react-native';
 import type { ViewStyle, TextStyle } from 'react-native';
 import type { ChecklistBlockContent, BlockStyling, ButtonAction } from '../../types';
-import { getStylingStyles, scale, createShadowStyle } from '../../utils/styles';
+import { getStylingStyles, scale, createShadowStyle, hexToRgba } from '../../utils/styles';
+
+// Checkmark icon component for list/cards style
+function CheckIcon({ color, size = 20 }: { color: string; size?: number }) {
+  return (
+    <View style={{ width: size, height: size, justifyContent: 'center', alignItems: 'center' }}>
+      <Text style={{ fontSize: size * 0.8, color, fontWeight: '700' }}>✓</Text>
+    </View>
+  );
+}
 
 // Optional haptics support - dynamically imported
 interface HapticsModule {
@@ -119,97 +128,220 @@ export function ChecklistBlock({
     }
   };
 
-  const getItemStyle = (isSelected: boolean): ViewStyle => {
-    const baseStyle: ViewStyle = {
-      backgroundColor: isSelected
-        ? backgroundColor || activeColor
-        : backgroundColor || inactiveColor,
-      borderRadius: scale(borderRadius),
-      padding: scale(itemPadding),
-      marginBottom: scale(itemGap),
-      alignItems: 'center',
-      justifyContent: 'center',
-    };
-
-    // Border handling
+  // Helper to get border style - matches web editor exactly
+  const getBorderStyle = (isSelected: boolean): { borderWidth?: number; borderColor?: string } => {
     if (isSelected && showBorderWhenSelected) {
-      baseStyle.borderWidth = 2;
-      baseStyle.borderColor = borderColor || activeColor;
+      return { borderWidth: 2, borderColor: borderColor || activeColor };
     } else if (borderWhenUnselected && borderWhenUnselected !== 'none') {
-      baseStyle.borderWidth = 2;
-      baseStyle.borderColor =
-        borderWhenUnselected === 'transparent' ? 'transparent' : borderWhenUnselected;
+      return {
+        borderWidth: 2,
+        borderColor: borderWhenUnselected === 'transparent' ? 'transparent' : borderWhenUnselected,
+      };
     }
-
-    // Shadow
-    if (shadow) {
-      Object.assign(baseStyle, createShadowStyle({
-        offsetX: 0,
-        offsetY: 2,
-        blur: 8,
-        spread: 0,
-        color: 'rgba(0,0,0,0.1)',
-      }));
-    }
-
-    // Width
-    if (typeof itemWidth === 'number') {
-      baseStyle.width = scale(itemWidth);
-    } else {
-      baseStyle.flex = columns === 2 ? undefined : 1;
-      baseStyle.width = columns === 2 ? '48%' : '100%';
-    }
-
-    return baseStyle;
+    return {};
   };
 
-  const getTextStyle = (isSelected: boolean): TextStyle => ({
-    fontSize: scale(fontSize),
-    color: isSelected ? '#FFFFFF' : textColor,
-    fontWeight: isSelected ? '600' : '400',
-    textAlign: 'center',
-  });
-
   // Determine layout style based on columns and style
+  const isPillStyle = checklistStyle === 'pills';
+  const isCardStyle = checklistStyle === 'cards';
+  const isListStyle = checklistStyle === 'list';
+
+  // Base list container style
   const listStyle: ViewStyle =
     columns === 2
       ? { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' }
+      : isPillStyle
+      ? { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center' }
       : { flexDirection: 'column' };
 
-  // Apply pill style modifications
-  const isPillStyle = checklistStyle === 'pills';
-  const isCardStyle = checklistStyle === 'cards';
+  // Get item width - matches editor's fixed width approach
+  const getItemWidth = (): ViewStyle['width'] => {
+    if (isPillStyle) return 'auto';
+    if (columns === 2) return '48%';
+    if (typeof itemWidth === 'number') return scale(itemWidth);
+    return '100%';
+  };
 
+  // Render pills style - matches web editor exactly (lines 2197-2234)
+  if (isPillStyle) {
+    return (
+      <View style={containerStyle}>
+        <View style={[listStyle, { gap: scale(itemGap) }]}>
+          {items.map((item) => {
+            const isSelected = selectedItems.includes(item.id);
+
+            // Pills: solid activeColor when selected, backgroundColor or inactiveColor when not
+            const itemBgColor = isSelected ? activeColor : (backgroundColor || inactiveColor);
+            // Pills: white text when selected
+            const itemTextColor = isSelected ? '#ffffff' : textColor;
+
+            const pillStyle: ViewStyle = {
+              backgroundColor: itemBgColor,
+              paddingVertical: scale(itemPadding * 0.7),
+              paddingHorizontal: scale(itemPadding * 1.5),
+              borderRadius: borderRadius === 9999 ? 9999 : scale(borderRadius),
+              alignItems: 'center',
+              justifyContent: 'center',
+              // Scale effect when selected
+              transform: isSelected ? [{ scale: 1.05 }] : undefined,
+              // Shadow glow effect when selected
+              ...(isSelected && Platform.OS === 'ios' && {
+                shadowColor: activeColor,
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.4,
+                shadowRadius: 14,
+              }),
+              ...(isSelected && Platform.OS === 'android' && {
+                elevation: 8,
+              }),
+            };
+
+            const pillTextStyle: TextStyle = {
+              fontSize: scale(fontSize),
+              color: itemTextColor,
+              fontWeight: '500',
+              textAlign: 'center',
+            };
+
+            return (
+              <TouchableOpacity
+                key={item.id}
+                style={pillStyle}
+                onPress={() => handleItemPress(item.id)}
+                activeOpacity={0.7}
+              >
+                <Text style={pillTextStyle}>{item.label}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </View>
+    );
+  }
+
+  // Render cards style - matches web editor exactly (lines 2237-2287)
+  if (isCardStyle) {
+    return (
+      <View style={containerStyle}>
+        <View style={listStyle}>
+          {items.map((item) => {
+            const isSelected = selectedItems.includes(item.id);
+
+            // Cards: use activeColor with 15% opacity when selected (tinted background)
+            // When not selected, use backgroundColor or default rgba(255,255,255,0.05)
+            const cardBgColor = isSelected
+              ? hexToRgba(activeColor, 0.15)
+              : (backgroundColor || 'rgba(255,255,255,0.05)');
+
+            // Cards: text color stays the same (doesn't turn white)
+            const cardTextColor = textColor;
+
+            const cardStyle: ViewStyle = {
+              backgroundColor: cardBgColor,
+              padding: scale(itemPadding),
+              borderRadius: scale(borderRadius),
+              marginBottom: scale(itemGap),
+              width: getItemWidth(),
+              position: 'relative',
+              // Scale effect when selected
+              transform: isSelected ? [{ scale: 1.02 }] : undefined,
+              // Border
+              ...getBorderStyle(isSelected),
+              // Shadow
+              ...(shadow && createShadowStyle({
+                offsetX: 0,
+                offsetY: isSelected ? 2 : 1,
+                blur: isSelected ? 8 : 3,
+                spread: 0,
+                color: isSelected ? 'rgba(0,0,0,0.15)' : 'rgba(0,0,0,0.1)',
+              })),
+            };
+
+            const cardTextStyle: TextStyle = {
+              fontSize: scale(fontSize),
+              color: cardTextColor,
+              fontWeight: '500',
+              textAlign: 'left',
+            };
+
+            return (
+              <TouchableOpacity
+                key={item.id}
+                style={cardStyle}
+                onPress={() => handleItemPress(item.id)}
+                activeOpacity={0.7}
+              >
+                {/* Check icon in top right when selected */}
+                {isSelected && (
+                  <View style={styles.checkIconContainer}>
+                    <CheckIcon color={activeColor} size={scale(20)} />
+                  </View>
+                )}
+                <Text style={cardTextStyle}>{item.label}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </View>
+    );
+  }
+
+  // Render list style (default) - matches web editor exactly (lines 2289-2337)
   return (
     <View style={containerStyle}>
       <View style={listStyle}>
         {items.map((item) => {
           const isSelected = selectedItems.includes(item.id);
-          const itemStyle = getItemStyle(isSelected);
 
-          // Pill style adjustments
-          if (isPillStyle) {
-            itemStyle.paddingVertical = scale(8);
-            itemStyle.paddingHorizontal = scale(16);
-            itemStyle.borderRadius = scale(999);
-            itemStyle.width = 'auto';
-            itemStyle.flex = undefined;
-          }
+          // List: use activeColor with 20% opacity when selected (slightly more prominent than cards)
+          // When not selected, use backgroundColor or default rgba(255,255,255,0.05)
+          const listBgColor = isSelected
+            ? hexToRgba(activeColor, 0.2)
+            : (backgroundColor || 'rgba(255,255,255,0.05)');
 
-          // Card style adjustments
-          if (isCardStyle) {
-            itemStyle.paddingVertical = scale(20);
-            itemStyle.paddingHorizontal = scale(20);
-          }
+          // List: text color stays the same (doesn't turn white)
+          const listTextColor = textColor;
+
+          const listItemStyle: ViewStyle = {
+            backgroundColor: listBgColor,
+            padding: scale(itemPadding),
+            borderRadius: scale(borderRadius),
+            marginBottom: scale(itemGap),
+            width: getItemWidth(),
+            position: 'relative',
+            // Border
+            ...getBorderStyle(isSelected),
+            // Shadow
+            ...(shadow && createShadowStyle({
+              offsetX: 0,
+              offsetY: isSelected ? 2 : 1,
+              blur: isSelected ? 8 : 3,
+              spread: 0,
+              color: isSelected ? 'rgba(0,0,0,0.15)' : 'rgba(0,0,0,0.1)',
+            })),
+          };
+
+          const listTextStyle: TextStyle = {
+            fontSize: scale(fontSize),
+            color: listTextColor,
+            fontWeight: '400',
+            textAlign: 'left',
+          };
 
           return (
             <TouchableOpacity
               key={item.id}
-              style={itemStyle}
+              style={listItemStyle}
               onPress={() => handleItemPress(item.id)}
               activeOpacity={0.7}
             >
-              <Text style={getTextStyle(isSelected)}>{item.label}</Text>
+              {/* Check icon in top right when selected */}
+              {isSelected && (
+                <View style={styles.checkIconContainer}>
+                  <CheckIcon color={activeColor} size={scale(20)} />
+                </View>
+              )}
+              <Text style={listTextStyle}>{item.label}</Text>
             </TouchableOpacity>
           );
         })}
@@ -217,3 +349,11 @@ export function ChecklistBlock({
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  checkIconContainer: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+  },
+});

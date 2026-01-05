@@ -4,11 +4,11 @@ import {
   Text,
   View,
   StyleSheet,
-  Platform,
 } from 'react-native';
 import type { ViewStyle, TextStyle } from 'react-native';
 import type { ButtonBlockContent, BlockStyling, ButtonAction } from '../../types';
-import { getStylingStyles, getFontWeight, scale } from '../../utils/styles';
+import { getStylingStyles, getFontWeight, scale, parseGradient } from '../../utils/styles';
+import { LinearGradient } from '../LinearGradient';
 
 interface ButtonBlockProps {
   content: ButtonBlockContent;
@@ -116,8 +116,12 @@ export function ButtonBlock({
     width: fullWidth ? '100%' : 'auto',
   };
 
+  // Check if we should use gradient
+  const hasGradient = backgroundGradient && backgroundGradient.colors && backgroundGradient.colors.length >= 2;
+
   const buttonStyle: ViewStyle = {
-    backgroundColor: bgColor,
+    // Only set backgroundColor if not using gradient
+    ...(hasGradient ? {} : { backgroundColor: bgColor }),
     borderRadius: btnBorderRadius,
     paddingHorizontal: scale(paddingHorizontal ?? sizeConfig.h),
     paddingVertical: scale(paddingVertical ?? sizeConfig.v),
@@ -130,6 +134,23 @@ export function ButtonBlock({
       borderWidth: 1,
       borderColor: variantStyle.border,
     }),
+    // Ensure overflow is hidden for gradient to respect border radius
+    overflow: 'hidden',
+  };
+
+  // Gradient style needs to match button dimensions
+  const gradientStyle: ViewStyle = {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: btnBorderRadius,
+  };
+
+  // Content container style for when using gradient
+  const contentContainerStyle: ViewStyle = {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: scale(paddingHorizontal ?? sizeConfig.h),
+    paddingVertical: scale(paddingVertical ?? sizeConfig.v),
   };
 
   const textStyle: TextStyle = {
@@ -150,6 +171,47 @@ export function ButtonBlock({
     }
   };
 
+  // Render button content (icon + text)
+  const renderContent = () => (
+    <>
+      {displayIcon && iconPosition === 'left' && (
+        <Text style={[textStyle, styles.iconLeft]}>{displayIcon}</Text>
+      )}
+      <Text style={textStyle}>{displayText}</Text>
+      {displayIcon && iconPosition === 'right' && (
+        <Text style={[textStyle, styles.iconRight]}>{displayIcon}</Text>
+      )}
+    </>
+  );
+
+  // If using gradient, render with LinearGradient
+  if (hasGradient) {
+    const { colors, start, end } = parseGradient(backgroundGradient!);
+
+    return (
+      <View style={containerStyle}>
+        <TouchableOpacity
+          style={[buttonStyle, { paddingHorizontal: 0, paddingVertical: 0 }]}
+          onPress={handlePress}
+          disabled={disabled}
+          activeOpacity={0.7}
+        >
+          <LinearGradient
+            colors={colors}
+            start={start}
+            end={end}
+            style={{ ...gradientStyle, position: 'relative' } as ViewStyle}
+          >
+            <View style={contentContainerStyle}>
+              {renderContent()}
+            </View>
+          </LinearGradient>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  // Standard button without gradient
   return (
     <View style={containerStyle}>
       <TouchableOpacity
@@ -158,13 +220,7 @@ export function ButtonBlock({
         disabled={disabled}
         activeOpacity={0.7}
       >
-        {displayIcon && iconPosition === 'left' && (
-          <Text style={[textStyle, styles.iconLeft]}>{displayIcon}</Text>
-        )}
-        <Text style={textStyle}>{displayText}</Text>
-        {displayIcon && iconPosition === 'right' && (
-          <Text style={[textStyle, styles.iconRight]}>{displayIcon}</Text>
-        )}
+        {renderContent()}
       </TouchableOpacity>
     </View>
   );
