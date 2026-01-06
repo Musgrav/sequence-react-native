@@ -346,12 +346,19 @@ export function FlowRenderer({
   }, [currentScreen]);
 
   // Calculate scale factors for WYSIWYG rendering
+  // Swift SDK uses: uniformScale = scaleX (width-based) for most elements
+  // Y positioning uses scaleY to fill the screen vertically
   const uniformScale = SCREEN_WIDTH / EDITOR_CANVAS_WIDTH;
   const yScale = SCREEN_HEIGHT / EDITOR_CANVAS_HEIGHT;
 
   // Max widths for different block types (matching Swift SDK)
+  // Swift: textMaxWidth = 280 * uniformScale
+  // Swift: fullWidthMaxWidth = (editorCanvasWidth - 48) * uniformScale
   const textMaxWidth = 280 * uniformScale;
   const fullWidthMaxWidth = (EDITOR_CANVAS_WIDTH - 48) * uniformScale; // 345px scaled
+
+  // Calculate horizontal padding to center content (matching Swift SDK's 24px padding on each side)
+  const horizontalPadding = 24 * uniformScale;
 
   // Determine if a block should use full width
   // IMPORTANT: This must match Swift SDK's OnboardingView.swift exactly
@@ -482,28 +489,15 @@ export function FlowRenderer({
 
   return (
     <View style={[styles.container, getBackgroundStyle]}>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle="light-content" />
 
       {renderBackground()}
 
-      {/* Progress indicator at top */}
-      {progressIndicator?.enabled && progressIndicator.position === 'top' && (
-        <FlowProgressBar
-          progressIndicator={progressIndicator}
-          currentIndex={currentIndex}
-          totalScreens={screens.length}
-          style={{ paddingTop: insets.top + scale(10), paddingHorizontal: scale(24) }}
-        />
-      )}
-
-      {/* Screen content with animations */}
+      {/* Screen content with animations - fills entire screen for WYSIWYG */}
       <Animated.View
         style={[
           styles.screenContainer,
           {
-            paddingTop: progressIndicator?.enabled && progressIndicator.position === 'top'
-              ? scale(20)
-              : insets.top + scale(20),
             transform: [{ translateX: slideAnim }],
             opacity: fadeAnim,
           },
@@ -512,14 +506,28 @@ export function FlowRenderer({
         {renderScreenContent()}
       </Animated.View>
 
-      {/* Progress indicator at bottom */}
+      {/* Progress indicator at top - overlaid on top of content */}
+      {progressIndicator?.enabled && progressIndicator.position === 'top' && (
+        <View style={styles.progressOverlayTop}>
+          <FlowProgressBar
+            progressIndicator={progressIndicator}
+            currentIndex={currentIndex}
+            totalScreens={screens.length}
+            style={{ paddingTop: insets.top + scale(10), paddingHorizontal: scale(24) }}
+          />
+        </View>
+      )}
+
+      {/* Progress indicator at bottom - overlaid on top of content */}
       {progressIndicator?.enabled && progressIndicator.position === 'bottom' && (
-        <FlowProgressBar
-          progressIndicator={progressIndicator}
-          currentIndex={currentIndex}
-          totalScreens={screens.length}
-          style={{ paddingBottom: insets.bottom + scale(10), paddingHorizontal: scale(24) }}
-        />
+        <View style={styles.progressOverlayBottom}>
+          <FlowProgressBar
+            progressIndicator={progressIndicator}
+            currentIndex={currentIndex}
+            totalScreens={screens.length}
+            style={{ paddingBottom: insets.bottom + scale(10), paddingHorizontal: scale(24) }}
+          />
+        </View>
       )}
     </View>
   );
@@ -531,12 +539,30 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   screenContainer: {
-    flex: 1,
+    // Fill entire screen for WYSIWYG positioning
+    // Swift SDK uses .frame(maxWidth: .infinity, maxHeight: .infinity).ignoresSafeArea(.all)
+    ...StyleSheet.absoluteFillObject,
   },
   canvasContainer: {
+    // Canvas fills entire screen - blocks are positioned absolutely within
+    // Swift SDK: .frame(width: geometry.size.width, height: geometry.size.height, alignment: .topLeading)
     flex: 1,
     width: '100%',
     height: '100%',
+  },
+  progressOverlayTop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 10,
+  },
+  progressOverlayBottom: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    zIndex: 10,
   },
   scrollView: {
     flex: 1,
@@ -552,7 +578,6 @@ const styles = StyleSheet.create({
     right: 0,
     paddingHorizontal: 24,
     paddingTop: 20,
-    // backgroundColor is set dynamically to match screen background
   },
   pinnedFadeGradient: {
     position: 'absolute',

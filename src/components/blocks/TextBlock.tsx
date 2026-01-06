@@ -140,16 +140,21 @@ export function TextBlock({
   // Container style matching Swift SDK's TextBlockView:
   // - .frame(maxWidth: maxWidth, alignment: .leading)
   // - Position represents TOP-LEFT of text container
+  // - Text naturally sizes to content, maxWidth constrains wrapping
   const containerStyle: ViewStyle = {
     ...getStylingStyles(styling),
-    maxWidth: maxWidth,
+    // Use width instead of maxWidth to ensure proper text wrapping
+    // Swift SDK: .frame(maxWidth: maxWidth, alignment: .leading)
+    width: maxWidth,
+    // Allow the view to shrink to content if text is shorter
+    alignSelf: 'flex-start',
   };
 
   // Render rich text if available
   if (richText && richText.length > 0) {
     return (
       <View style={containerStyle}>
-        <Text style={textStyle}>
+        <Text style={textStyle} numberOfLines={0}>
           {renderRichTextSpans(richText, color, scaledFontSize, scaleFactor)}
         </Text>
       </View>
@@ -161,7 +166,7 @@ export function TextBlock({
 
   return (
     <View style={containerStyle}>
-      <Text style={textStyle}>{displayText}</Text>
+      <Text style={textStyle} numberOfLines={0}>{displayText}</Text>
     </View>
   );
 }
