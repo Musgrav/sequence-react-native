@@ -81,11 +81,13 @@ export function ButtonBlock({
   const hasGradient = backgroundGradient && backgroundGradient.colors && backgroundGradient.colors.length >= 2;
 
   // Container style - controls overall positioning
+  // The parent FlowRenderer already sets width on the positioning container,
+  // so we just need width: '100%' to fill it when fullWidth is true
   const containerStyle: ViewStyle = {
     ...getStylingStyles(styling),
-    // fullWidth: use maxWidth or 100%
-    // not fullWidth: size to content
-    ...(fullWidth ? { width: maxWidth || '100%' } : {}),
+    // fullWidth: fill parent container (which already has maxWidth set)
+    // not fullWidth: size to content (align to start)
+    ...(fullWidth ? { width: '100%' } : { alignSelf: 'flex-start' }),
   };
 
   // Determine display text

@@ -131,8 +131,10 @@ export function TextBlock({
     color,
     textAlign: getTextAlign(align),
     fontFamily,
-    // Line height: Swift uses lineHeight multiplier * fontSize
-    lineHeight: lineHeight ? s(lineHeight * baseFontSize) : undefined,
+    // Line height: multiplier * scaledFontSize (in React Native, lineHeight is absolute pixels)
+    // Web passes lineHeight as a multiplier (e.g., 1.5) which CSS interprets correctly
+    // React Native needs an absolute value, so we multiply by the already-scaled font size
+    lineHeight: lineHeight ? lineHeight * scaledFontSize : undefined,
     // Letter spacing scaled
     letterSpacing: letterSpacing ? s(letterSpacing) : undefined,
   };

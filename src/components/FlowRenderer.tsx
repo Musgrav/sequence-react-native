@@ -5,6 +5,7 @@ import {
   Dimensions,
   Animated,
   StatusBar,
+  Easing,
 } from 'react-native';
 import type { ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -139,6 +140,7 @@ export function FlowRenderer({
           Animated.timing(fadeAnim, {
             toValue: 1,
             duration,
+            easing: Easing.inOut(Easing.ease),
             useNativeDriver: true,
           }).start(callback);
           break;
@@ -152,6 +154,7 @@ export function FlowRenderer({
           Animated.timing(slideAnim, {
             toValue: 0,
             duration,
+            easing: Easing.inOut(Easing.ease),
             useNativeDriver: true,
           }).start(callback);
           break;
@@ -165,6 +168,7 @@ export function FlowRenderer({
           Animated.timing(slideAnim, {
             toValue: 0,
             duration,
+            easing: Easing.inOut(Easing.ease),
             useNativeDriver: true,
           }).start(callback);
           break;
@@ -178,6 +182,7 @@ export function FlowRenderer({
           Animated.timing(slideYAnim, {
             toValue: 0,
             duration,
+            easing: Easing.inOut(Easing.ease),
             useNativeDriver: true,
           }).start(callback);
           break;
@@ -191,6 +196,7 @@ export function FlowRenderer({
           Animated.timing(slideYAnim, {
             toValue: 0,
             duration,
+            easing: Easing.inOut(Easing.ease),
             useNativeDriver: true,
           }).start(callback);
           break;
@@ -205,11 +211,13 @@ export function FlowRenderer({
             Animated.timing(slideAnim, {
               toValue: 0,
               duration,
+              easing: Easing.inOut(Easing.ease),
               useNativeDriver: true,
             }),
             Animated.timing(fadeAnim, {
               toValue: 1,
               duration,
+              easing: Easing.inOut(Easing.ease),
               useNativeDriver: true,
             }),
           ]).start(callback);
@@ -225,11 +233,13 @@ export function FlowRenderer({
             Animated.timing(slideAnim, {
               toValue: 0,
               duration,
+              easing: Easing.inOut(Easing.ease),
               useNativeDriver: true,
             }),
             Animated.timing(fadeAnim, {
               toValue: 1,
               duration,
+              easing: Easing.inOut(Easing.ease),
               useNativeDriver: true,
             }),
           ]).start(callback);
@@ -245,11 +255,13 @@ export function FlowRenderer({
             Animated.timing(scaleAnim, {
               toValue: 1,
               duration,
+              easing: Easing.inOut(Easing.ease),
               useNativeDriver: true,
             }),
             Animated.timing(fadeAnim, {
               toValue: 1,
               duration,
+              easing: Easing.inOut(Easing.ease),
               useNativeDriver: true,
             }),
           ]).start(callback);
@@ -267,11 +279,13 @@ export function FlowRenderer({
             Animated.timing(slideAnim, {
               toValue: 0,
               duration,
+              easing: Easing.inOut(Easing.ease),
               useNativeDriver: true,
             }),
             Animated.timing(fadeAnim, {
               toValue: 1,
               duration,
+              easing: Easing.inOut(Easing.ease),
               useNativeDriver: true,
             }),
           ]).start(callback);

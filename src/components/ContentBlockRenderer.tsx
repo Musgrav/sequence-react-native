@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useMemo } from 'react';
-import { View, Animated, StyleSheet } from 'react-native';
+import { View, Animated, StyleSheet, Easing } from 'react-native';
 import type { ViewStyle } from 'react-native';
 import type {
   ContentBlock,
@@ -79,6 +79,7 @@ export function ContentBlockRenderer({
       Animated.timing(animatedValue, {
         toValue: 1,
         duration,
+        easing: Easing.inOut(Easing.ease),
         useNativeDriver: true,
       }).start();
     }, delay);
