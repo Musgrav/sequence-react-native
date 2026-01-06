@@ -4,11 +4,11 @@ import {
   Text,
   TextInput,
   StyleSheet,
-  KeyboardTypeOptions,
+  Platform,
 } from 'react-native';
-import type { ViewStyle, TextStyle } from 'react-native';
+import type { ViewStyle, TextStyle, KeyboardTypeOptions } from 'react-native';
 import type { InputBlockContent, BlockStyling } from '../../types';
-import { getStylingStyles, scale } from '../../utils/styles';
+import { getStylingStyles } from '../../utils/styles';
 
 interface InputBlockProps {
   content: InputBlockContent;
@@ -36,6 +36,16 @@ function getKeyboardType(inputType?: string): KeyboardTypeOptions {
   }
 }
 
+/**
+ * InputBlock - Matches web editor and Swift SDK styling
+ *
+ * Features:
+ * - Dark mode support (transparent background with white text)
+ * - Focus state with accent color border
+ * - Error state with red border
+ * - Proper scaling for WYSIWYG
+ * - Label support with asterisk for required fields
+ */
 export function InputBlock({
   content,
   styling,
@@ -47,8 +57,9 @@ export function InputBlock({
 }: InputBlockProps) {
   const {
     placeholder = '',
-    placeholderColor = '#999999',
+    placeholderColor = 'rgba(255, 255, 255, 0.5)', // Light placeholder for dark backgrounds
     label,
+    fieldLabel,
     fieldName,
     inputType = 'text',
     required = false,
@@ -56,31 +67,71 @@ export function InputBlock({
 
   const [isFocused, setIsFocused] = useState(false);
 
+  // Helper function for scaling
+  const s = (v: number) => v * scaleFactor;
+
+  // Use fieldLabel if available, otherwise fall back to label
+  const displayLabel = fieldLabel || label;
+
+  // Container style - matches web editor
   const containerStyle: ViewStyle = {
     ...getStylingStyles(styling),
     width: maxWidth || '100%',
   };
 
+  // Input container style - matches web editor exactly
+  // Web uses: bg-white/10 (rgba(255,255,255,0.1)) with rounded corners
   const inputContainerStyle: ViewStyle = {
-    borderWidth: 1,
-    borderColor: hasError ? '#FF3B30' : isFocused ? '#007AFF' : '#E5E5EA',
-    borderRadius: 12 * scaleFactor,
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 16 * scaleFactor,
-    paddingVertical: 12 * scaleFactor,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)', // Matches web bg-white/10
+    borderRadius: s(12),
+    borderWidth: 2,
+    borderColor: hasError
+      ? '#FF3B30' // Red for error
+      : isFocused
+        ? '#10b981' // Green accent when focused (matches web emerald-500)
+        : 'transparent', // No border when not focused
+    paddingHorizontal: s(16),
+    paddingVertical: Platform.select({
+      ios: s(14),
+      android: s(12),
+      default: s(14),
+    }),
+    // Subtle shadow on iOS for depth
+    ...(Platform.OS === 'ios' && {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.1,
+      shadowRadius: 2,
+    }),
   };
 
+  // Input text style - matches web editor
   const inputStyle: TextStyle = {
-    fontSize: 16 * scaleFactor,
-    color: '#000000',
+    fontSize: s(16),
+    color: '#FFFFFF', // White text for dark backgrounds
     padding: 0,
+    margin: 0,
+    fontWeight: '400',
+    // Ensure proper vertical alignment
+    ...(Platform.OS === 'android' && {
+      textAlignVertical: 'center',
+    }),
   };
 
+  // Label style - matches web editor
   const labelStyle: TextStyle = {
-    fontSize: 14 * scaleFactor,
-    color: '#666666',
-    marginBottom: 8 * scaleFactor,
+    fontSize: s(14),
+    color: 'rgba(255, 255, 255, 0.7)', // Slightly transparent white
+    marginBottom: s(8),
     fontWeight: '500',
+  };
+
+  // Error text style
+  const errorStyle: TextStyle = {
+    fontSize: s(12),
+    color: '#FF3B30',
+    marginTop: s(6),
+    fontWeight: '400',
   };
 
   const handleChangeText = (text: string) => {
@@ -89,9 +140,9 @@ export function InputBlock({
 
   return (
     <View style={containerStyle}>
-      {label && (
+      {displayLabel && (
         <Text style={labelStyle}>
-          {label}
+          {displayLabel}
           {required && <Text style={styles.required}> *</Text>}
         </Text>
       )}
@@ -108,10 +159,12 @@ export function InputBlock({
           autoCorrect={inputType !== 'email' && inputType !== 'password'}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
+          returnKeyType="done"
+          autoComplete={inputType === 'email' ? 'email' : inputType === 'phone' ? 'tel' : 'off'}
         />
       </View>
       {hasError && (
-        <Text style={styles.errorText}>This field is required</Text>
+        <Text style={errorStyle}>This field is required</Text>
       )}
     </View>
   );
@@ -120,10 +173,5 @@ export function InputBlock({
 const styles = StyleSheet.create({
   required: {
     color: '#FF3B30',
-  },
-  errorText: {
-    fontSize: 12,
-    color: '#FF3B30',
-    marginTop: 4,
   },
 });

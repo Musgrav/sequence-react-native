@@ -1,8 +1,8 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text } from 'react-native';
 import type { ViewStyle, TextStyle } from 'react-native';
-import type { FeatureCardBlockContent, BlockStyling, TextSpan } from '../../types';
-import { getStylingStyles, getFontWeight, scale, createShadowStyle } from '../../utils/styles';
+import type { FeatureCardBlockContent, BlockStyling, TextSpan, CollectedData } from '../../types';
+import { getStylingStyles, getFontWeight, createShadowStyle } from '../../utils/styles';
 
 interface FeatureCardBlockProps {
   content: FeatureCardBlockContent;
@@ -11,6 +11,23 @@ interface FeatureCardBlockProps {
   scaleFactor?: number;
   /** Max width for the feature card block */
   maxWidth?: number;
+  /** Collected data for variable interpolation */
+  collectedData?: CollectedData;
+}
+
+/**
+ * Interpolate variables in text (e.g., {fieldName})
+ */
+function interpolateText(
+  text: string,
+  data: Record<string, string | string[] | number>
+): string {
+  return text.replace(/\{([^}]+)\}/g, (match, key) => {
+    const value = data[key.trim()];
+    if (value === undefined) return match;
+    if (Array.isArray(value)) return value.join(', ');
+    return String(value);
+  });
 }
 
 /**
@@ -20,7 +37,8 @@ function renderRichTextSpans(
   spans: TextSpan[],
   defaultColor?: string,
   defaultFontSize?: number,
-  scaleFactor: number = 1
+  scaleFactor: number = 1,
+  collectedData: CollectedData = {}
 ): React.ReactNode[] {
   return spans.map((span, index) => {
     const style: TextStyle = {
@@ -32,15 +50,24 @@ function renderRichTextSpans(
       fontSize: span.fontSize ? span.fontSize * scaleFactor : defaultFontSize,
     };
 
+    // Interpolate variables in span text
+    const text = interpolateText(span.text, collectedData);
+
     return (
       <Text key={index} style={style}>
-        {span.text}
+        {text}
       </Text>
     );
   });
 }
 
-export function FeatureCardBlock({ content, styling, scaleFactor = 1, maxWidth }: FeatureCardBlockProps) {
+export function FeatureCardBlock({
+  content,
+  styling,
+  scaleFactor = 1,
+  maxWidth,
+  collectedData = {},
+}: FeatureCardBlockProps) {
   const {
     headline,
     headlineRichText,
@@ -114,21 +141,25 @@ export function FeatureCardBlock({ content, styling, scaleFactor = 1, maxWidth }
     lineHeight: lineHeight ? s(lineHeight * bodyFontSize) : undefined,
   };
 
+  // Interpolate variables in headline and body
+  const displayHeadline = headline ? interpolateText(headline, collectedData) : undefined;
+  const displayBody = body ? interpolateText(body, collectedData) : undefined;
+
   return (
     <View style={containerStyle}>
       <View style={cardStyle}>
-        {(headline || headlineRichText) && (
+        {(displayHeadline || headlineRichText) && (
           <Text style={headlineStyle}>
             {headlineRichText && headlineRichText.length > 0
-              ? renderRichTextSpans(headlineRichText, headlineColor, s(headlineFontSize), scaleFactor)
-              : headline}
+              ? renderRichTextSpans(headlineRichText, headlineColor, s(headlineFontSize), scaleFactor, collectedData)
+              : displayHeadline}
           </Text>
         )}
-        {(body || bodyRichText) && (
+        {(displayBody || bodyRichText) && (
           <Text style={bodyStyle}>
             {bodyRichText && bodyRichText.length > 0
-              ? renderRichTextSpans(bodyRichText, bodyColor, s(bodyFontSize), scaleFactor)
-              : body}
+              ? renderRichTextSpans(bodyRichText, bodyColor, s(bodyFontSize), scaleFactor, collectedData)
+              : displayBody}
           </Text>
         )}
       </View>

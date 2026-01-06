@@ -9,3 +9,4 @@ export { DividerBlock } from './DividerBlock';
 export { IconBlock } from './IconBlock';
 export { FeatureCardBlock } from './FeatureCardBlock';
 export { ProgressBlock } from './ProgressBlock';
+export { ScrollContainerBlock } from './ScrollContainerBlock';

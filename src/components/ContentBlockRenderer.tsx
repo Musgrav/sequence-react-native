@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useMemo } from 'react';
 import { View, Animated, StyleSheet } from 'react-native';
 import type { ViewStyle } from 'react-native';
 import type {
@@ -16,8 +16,9 @@ import type {
   FeatureCardBlockContent,
   ProgressBlockContent,
   CollectedData,
+  ScrollContainerBlockContent,
 } from '../types';
-import { scale } from '../utils/styles';
+import { getStylingStyles } from '../utils/styles';
 import {
   TextBlock,
   ImageBlock,
@@ -31,6 +32,7 @@ import {
   FeatureCardBlock,
   ProgressBlock,
 } from './blocks';
+import { ScrollContainerBlock } from './blocks/ScrollContainerBlock';
 
 interface ContentBlockRendererProps {
   block: ContentBlock;
@@ -59,7 +61,7 @@ export function ContentBlockRenderer({
   scaleFactor = 1,
   maxWidth,
 }: ContentBlockRendererProps) {
-  const { type, content, styling, animation, visible = true, pinToBottom } = block;
+  const { type, content, styling, animation, visible = true } = block;
 
   // Animation values
   const animatedValue = useRef(new Animated.Value(0)).current;
@@ -89,8 +91,8 @@ export function ContentBlockRenderer({
     return null;
   }
 
-  // Get animation styles
-  const getAnimationStyle = () => {
+  // Get animation styles - memoized for performance
+  const getAnimationStyle = (): ViewStyle | { opacity: Animated.Value; transform: { translateY?: Animated.AnimatedInterpolation<number>; translateX?: Animated.AnimatedInterpolation<number>; scale?: Animated.AnimatedInterpolation<number> }[] } => {
     if (!animation || animation.type === 'none') {
       return {};
     }
@@ -108,7 +110,7 @@ export function ContentBlockRenderer({
             {
               translateY: animatedValue.interpolate({
                 inputRange: [0, 1],
-                outputRange: [50, 0],
+                outputRange: [50 * scaleFactor, 0],
               }),
             },
           ],
@@ -121,7 +123,7 @@ export function ContentBlockRenderer({
             {
               translateY: animatedValue.interpolate({
                 inputRange: [0, 1],
-                outputRange: [-50, 0],
+                outputRange: [-50 * scaleFactor, 0],
               }),
             },
           ],
@@ -134,7 +136,7 @@ export function ContentBlockRenderer({
             {
               translateX: animatedValue.interpolate({
                 inputRange: [0, 1],
-                outputRange: [50, 0],
+                outputRange: [50 * scaleFactor, 0],
               }),
             },
           ],
@@ -147,7 +149,7 @@ export function ContentBlockRenderer({
             {
               translateX: animatedValue.interpolate({
                 inputRange: [0, 1],
-                outputRange: [-50, 0],
+                outputRange: [-50 * scaleFactor, 0],
               }),
             },
           ],
@@ -183,6 +185,24 @@ export function ContentBlockRenderer({
         return {};
     }
   };
+
+  // Get styling styles with rotation support
+  const stylingStyles = useMemo((): ViewStyle => {
+    const baseStyles = getStylingStyles(styling);
+
+    // Add rotation transform if specified
+    if (styling?.rotation) {
+      const rotationTransform = { rotate: `${styling.rotation}deg` };
+      if (baseStyles.transform) {
+        // If there are existing transforms, add rotation to them
+        (baseStyles.transform as any[]).push(rotationTransform);
+      } else {
+        baseStyles.transform = [rotationTransform] as any;
+      }
+    }
+
+    return baseStyles;
+  }, [styling]);
 
   // Render block content based on type
   const renderBlockContent = (): React.ReactNode => {
@@ -227,7 +247,7 @@ export function ContentBlockRenderer({
             content={inputContent}
             styling={styling}
             value={typeof value === 'string' ? value : ''}
-            onChangeValue={(fieldName, val) => onDataChange(fieldName, val)}
+            onChangeValue={(fieldName: string, val: string) => onDataChange(fieldName, val)}
             hasError={validationErrors.has(inputContent.fieldName)}
             scaleFactor={scaleFactor}
             maxWidth={maxWidth}
@@ -245,7 +265,7 @@ export function ContentBlockRenderer({
             content={checklistContent}
             styling={styling}
             selectedItems={Array.isArray(selected) ? selected : selected ? [String(selected)] : []}
-            onSelectionChange={(fieldName, selectedIds) => {
+            onSelectionChange={(fieldName: string | undefined, selectedIds: string[]) => {
               if (fieldName) {
                 onDataChange(fieldName, selectedIds);
               }
@@ -265,7 +285,7 @@ export function ContentBlockRenderer({
             content={sliderContent}
             styling={styling}
             value={typeof value === 'number' ? value : sliderContent.defaultValue}
-            onChangeValue={(fieldName, val) => onDataChange(fieldName, val)}
+            onChangeValue={(fieldName: string, val: number) => onDataChange(fieldName, val)}
             scaleFactor={scaleFactor}
             maxWidth={maxWidth}
           />
@@ -307,6 +327,7 @@ export function ContentBlockRenderer({
             styling={styling}
             scaleFactor={scaleFactor}
             maxWidth={maxWidth}
+            collectedData={collectedData}
           />
         );
 
@@ -319,6 +340,22 @@ export function ContentBlockRenderer({
             totalScreens={totalScreens}
             scaleFactor={scaleFactor}
             maxWidth={maxWidth}
+          />
+        );
+
+      case 'scroll-container':
+        return (
+          <ScrollContainerBlock
+            content={content as ScrollContainerBlockContent}
+            styling={styling}
+            scaleFactor={scaleFactor}
+            maxWidth={maxWidth}
+            collectedData={collectedData}
+            onDataChange={onDataChange}
+            onAction={onAction}
+            validationErrors={validationErrors}
+            currentScreenIndex={currentScreenIndex}
+            totalScreens={totalScreens}
           />
         );
 
@@ -345,18 +382,16 @@ export function ContentBlockRenderer({
     }
   };
 
+  // Container style - combines animation and styling transforms properly
   const containerStyle: ViewStyle = {
     width: '100%',
-    ...(pinToBottom && {
-      position: 'absolute',
-      bottom: 0,
-      left: 0,
-      right: 0,
-    }),
   };
 
+  // Get animation style
+  const animationStyle = getAnimationStyle();
+
   return (
-    <Animated.View style={[containerStyle, getAnimationStyle()]}>
+    <Animated.View style={[containerStyle, stylingStyles, animationStyle as ViewStyle]}>
       {renderBlockContent()}
     </Animated.View>
   );
