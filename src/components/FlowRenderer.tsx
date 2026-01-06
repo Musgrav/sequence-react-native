@@ -6,6 +6,7 @@ import {
   Animated,
   StatusBar,
   Easing,
+  InteractionManager,
 } from 'react-native';
 import type { ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -348,8 +349,15 @@ export function FlowRenderer({
       // Track screen completion
       Sequence.track('screen_completed', currentScreen?.id);
 
-      animateTransition(transition, isForward, () => {
-        setCurrentIndex(targetIndex);
+      // Change screen FIRST, then animate the new screen in
+      // This prevents the flicker where the old screen animates before switching
+      setCurrentIndex(targetIndex);
+
+      // Use InteractionManager to ensure state update is committed before animation starts
+      InteractionManager.runAfterInteractions(() => {
+        animateTransition(transition, isForward, () => {
+          // Animation complete - no additional action needed
+        });
       });
     },
     [currentIndex, screens.length, getTransition, animateTransition, currentScreen]
@@ -551,6 +559,16 @@ export function FlowRenderer({
             // Icons should NOT have explicit width to size naturally
             const needsExplicitWidth = block.type !== 'icon';
 
+            // Calculate effective width for clipping prevention
+            const effectiveWidth = blockWidth ?? (needsExplicitWidth ? maxWidth : undefined);
+
+            // Prevent text from being clipped at screen edge
+            // If left + width would exceed screen width, adjust the width to fit
+            let adjustedWidth = effectiveWidth;
+            if (effectiveWidth !== undefined && scaledX + effectiveWidth > SCREEN_WIDTH) {
+              adjustedWidth = SCREEN_WIDTH - scaledX - (8 * uniformScale); // 8px padding from edge
+            }
+
             return (
               <View
                 key={block.id}
@@ -558,10 +576,10 @@ export function FlowRenderer({
                   position: 'absolute',
                   left: scaledX,
                   top: scaledY,
-                  // Apply explicit dimensions if set, otherwise use maxWidth for non-icons
-                  ...(blockWidth !== undefined && { width: blockWidth }),
+                  // Apply adjusted width to prevent clipping
+                  ...(blockWidth !== undefined && { width: adjustedWidth }),
                   ...(blockHeight !== undefined && { height: blockHeight }),
-                  ...(needsExplicitWidth && blockWidth === undefined && { width: maxWidth }),
+                  ...(needsExplicitWidth && blockWidth === undefined && { width: adjustedWidth }),
                   zIndex: 1,
                 }}
               >
