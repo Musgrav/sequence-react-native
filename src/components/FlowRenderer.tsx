@@ -560,17 +560,16 @@ export function FlowRenderer({
               ? block.styling.height * uniformScale
               : undefined;
 
-            // Determine if block needs explicit width vs maxWidth
-            // - Text blocks: use maxWidth (allows natural sizing up to limit)
-            // - Full-width blocks (buttons, inputs, etc.): use explicit width
-            // - Icons: no width constraint (size naturally)
+            // Determine width for each block type
+            // CRITICAL: React Native Text REQUIRES explicit width to wrap text.
+            // Unlike CSS where maxWidth triggers wrapping, RN Text only wraps when
+            // the container has a specific width constraint.
             //
-            // CRITICAL: Web uses width: fit-content; max-width: 280px for text
-            // This means text sizes to content but won't exceed 280px
-            // React Native equivalent: use maxWidth without explicit width
-            const isTextBlock = block.type === 'text';
+            // All blocks (including text) need explicit width for proper rendering:
+            // - Text blocks: need width for text wrapping
+            // - Button/input blocks: need width to fill their container
+            // - Icon blocks: can size naturally (no width)
             const isIconBlock = block.type === 'icon';
-            const needsFixedWidth = !isTextBlock && !isIconBlock;
 
             return (
               <View
@@ -582,10 +581,9 @@ export function FlowRenderer({
                   // Apply explicit dimensions from styling if set
                   ...(blockWidth !== undefined && { width: blockWidth }),
                   ...(blockHeight !== undefined && { height: blockHeight }),
-                  // Text blocks: use maxWidth (allows natural sizing like web's fit-content + max-width)
-                  // Other blocks: use explicit width for full-width behavior
-                  ...(isTextBlock && blockWidth === undefined && { maxWidth: maxWidth }),
-                  ...(needsFixedWidth && blockWidth === undefined && { width: maxWidth }),
+                  // All blocks except icons need explicit width for proper rendering
+                  // Text needs it for wrapping, buttons need it for full-width behavior
+                  ...(!isIconBlock && blockWidth === undefined && { width: maxWidth }),
                   zIndex: 1,
                   // Allow content to overflow vertically for multi-line text
                   overflow: 'visible',

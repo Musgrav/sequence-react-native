@@ -1,6 +1,6 @@
 import React from 'react';
-import { Text } from 'react-native';
-import type { TextStyle } from 'react-native';
+import { Text, View } from 'react-native';
+import type { TextStyle, ViewStyle } from 'react-native';
 import type { TextBlockContent, TextSpan, BlockStyling } from '../../types';
 import {
   getStylingStyles,
@@ -139,35 +139,47 @@ export function TextBlock({
     letterSpacing: letterSpacing ? s(letterSpacing) : undefined,
   };
 
-  // Text block rendering approach - matching web's behavior:
-  // Web: <p className="max-w-[280px]" style={{ width: 'fit-content', textAlign: '...' }}>
+  // Text block rendering approach:
+  // CRITICAL: React Native Text requires the parent to have explicit width for text to wrap.
+  // The FlowRenderer sets width on the positioning container (280px for text blocks).
+  // This View fills that container (width: 100%), and Text wraps within it.
   //
-  // In React Native:
-  // - Text naturally sizes to content (like fit-content)
-  // - Use maxWidth on the text style to cap the width
+  // Container View:
+  // - width: 100% fills the parent's width constraint
   // - flexShrink: 0 prevents unwanted shrinking
-  // - No container View needed - simpler and matches web behavior
   //
-  // The parent View in FlowRenderer uses maxWidth on the positioning container,
-  // which allows this Text to size naturally up to that limit.
+  // Text component:
+  // - textAlign handles alignment within the container
+  // - No width on Text itself - it fills available width and wraps
 
-  // Get styling styles but apply to appropriate places
+  // Get styling styles
   const stylingStyles = getStylingStyles(styling);
+
+  // Container style - fills parent width for text wrapping
+  const containerStyle: ViewStyle = {
+    width: '100%',
+    flexShrink: 0,
+    ...stylingStyles,
+  };
 
   // Render rich text if available
   if (richText && richText.length > 0) {
     return (
-      <Text style={[textStyle, stylingStyles]}>
-        {renderRichTextSpans(richText, color, scaledFontSize, scaleFactor)}
-      </Text>
+      <View style={containerStyle}>
+        <Text style={textStyle}>
+          {renderRichTextSpans(richText, color, scaledFontSize, scaleFactor)}
+        </Text>
+      </View>
     );
   }
 
   // Interpolate variables in plain text
   const displayText = interpolateText(text, collectedData);
 
-  // Render plain text - no container needed, Text handles everything
+  // Render plain text with wrapper View for proper text wrapping
   return (
-    <Text style={[textStyle, stylingStyles]}>{displayText}</Text>
+    <View style={containerStyle}>
+      <Text style={textStyle}>{displayText}</Text>
+    </View>
   );
 }

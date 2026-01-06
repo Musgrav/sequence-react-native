@@ -383,19 +383,14 @@ export function ContentBlockRenderer({
     }
   };
 
-  // Container style - different for text vs other blocks
-  // - Text blocks: no fixed width, allow natural sizing (like CSS fit-content)
-  // - Other blocks: width: 100% to fill parent container
-  //
-  // This matches web behavior where text uses fit-content + max-width
-  // while other blocks (buttons, inputs) fill their container
-  const isTextBlock = type === 'text';
+  // Container style - all blocks fill their parent width except icons
+  // The parent View in FlowRenderer sets the width constraint
+  // This Animated.View fills that constraint so children can use width: 100%
   const isIconBlock = type === 'icon';
-  const shouldSizeNaturally = isTextBlock || isIconBlock;
 
   const containerStyle: ViewStyle = {
-    // Text/icon: size naturally; others: fill parent
-    ...(shouldSizeNaturally ? {} : { width: '100%' }),
+    // Icons size naturally; all others fill parent
+    ...(isIconBlock ? {} : { width: '100%' }),
     flexShrink: 0,
   };
 
