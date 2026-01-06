@@ -562,11 +562,27 @@ export function FlowRenderer({
             // Calculate effective width for clipping prevention
             const effectiveWidth = blockWidth ?? (needsExplicitWidth ? maxWidth : undefined);
 
-            // Prevent text from being clipped at screen edge
-            // If left + width would exceed screen width, adjust the width to fit
+            // Prevent content from being clipped at screen edge
+            // For text blocks with center alignment, we need to ensure the full text fits
+            // Strategy: If the block would overflow the right edge, extend width to screen edge
+            // and let the centered text position itself correctly within
             let adjustedWidth = effectiveWidth;
+            let adjustedX = scaledX;
+
             if (effectiveWidth !== undefined && scaledX + effectiveWidth > SCREEN_WIDTH) {
-              adjustedWidth = SCREEN_WIDTH - scaledX - (8 * uniformScale); // 8px padding from edge
+              // For text blocks, give them more room by using available space
+              // This ensures centered text can render fully
+              const availableWidth = SCREEN_WIDTH - scaledX - (8 * uniformScale);
+
+              // If the position itself is causing clipping, try to use more of the screen
+              if (block.type === 'text' && availableWidth < effectiveWidth) {
+                // Center the text block on screen instead
+                const padding = 24 * uniformScale;
+                adjustedWidth = SCREEN_WIDTH - (padding * 2);
+                adjustedX = padding;
+              } else {
+                adjustedWidth = availableWidth;
+              }
             }
 
             return (
@@ -574,13 +590,15 @@ export function FlowRenderer({
                 key={block.id}
                 style={{
                   position: 'absolute',
-                  left: scaledX,
+                  left: adjustedX,
                   top: scaledY,
                   // Apply adjusted width to prevent clipping
                   ...(blockWidth !== undefined && { width: adjustedWidth }),
                   ...(blockHeight !== undefined && { height: blockHeight }),
                   ...(needsExplicitWidth && blockWidth === undefined && { width: adjustedWidth }),
                   zIndex: 1,
+                  // Allow content to overflow vertically for multi-line text
+                  overflow: 'visible',
                 }}
               >
                 <ContentBlockRenderer

@@ -161,7 +161,7 @@ export function TextBlock({
   if (richText && richText.length > 0) {
     return (
       <View style={containerStyle}>
-        <Text style={textStyle} numberOfLines={0}>
+        <Text style={textStyle}>
           {renderRichTextSpans(richText, color, scaledFontSize, scaleFactor)}
         </Text>
       </View>
@@ -172,12 +172,9 @@ export function TextBlock({
   const displayText = interpolateText(text, collectedData);
 
   // Wrap Text in View that fills parent width - ensures proper text wrapping
-  // numberOfLines={0} explicitly allows unlimited lines (React Native default but being explicit)
   return (
     <View style={containerStyle}>
-      <Text style={textStyle} numberOfLines={0}>
-        {displayText}
-      </Text>
+      <Text style={textStyle}>{displayText}</Text>
     </View>
   );
 }
