@@ -323,6 +323,9 @@ export function FlowRenderer({
   const fullWidthMaxWidth = (EDITOR_CANVAS_WIDTH - 48) * uniformScale; // 345px scaled
 
   // Determine if a block should use full width
+  // IMPORTANT: This must match Swift SDK's OnboardingView.swift exactly
+  // Full-width blocks: checklist, input, slider, progress, divider
+  // Text-width blocks: text, icon, image, button
   const getBlockMaxWidth = (block: ContentBlock): number => {
     switch (block.type) {
       case 'checklist':
@@ -331,10 +334,9 @@ export function FlowRenderer({
       case 'divider':
       case 'slider':
         return fullWidthMaxWidth;
-      case 'button':
-        // Buttons use full width by default
-        const buttonContent = block.content as { fullWidth?: boolean };
-        return buttonContent.fullWidth !== false ? fullWidthMaxWidth : textMaxWidth;
+      // All other blocks (text, icon, image, button) use text width
+      // Button's fullWidth property controls whether it fills its container,
+      // but the container itself is limited to textMaxWidth
       default:
         return textMaxWidth;
     }
@@ -374,6 +376,10 @@ export function FlowRenderer({
             const scaledY = pos.y * yScale;
             const maxWidth = getBlockMaxWidth(block);
 
+            // For full-width blocks (checklist, input, etc.), set explicit width
+            // For text-width blocks, let them size to content within maxWidth
+            const isFullWidthBlock = ['checklist', 'input', 'progress', 'divider', 'slider'].includes(block.type);
+
             return (
               <View
                 key={block.id}
@@ -381,7 +387,10 @@ export function FlowRenderer({
                   position: 'absolute',
                   left: scaledX,
                   top: scaledY,
-                  maxWidth: maxWidth,
+                  // Full-width blocks get explicit width, text-width blocks get maxWidth constraint
+                  ...(isFullWidthBlock
+                    ? { width: maxWidth }
+                    : { maxWidth: maxWidth }),
                 }}
               >
                 <ContentBlockRenderer

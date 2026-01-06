@@ -99,9 +99,15 @@ export function TextBlock({ content, styling, collectedData = {}, scaleFactor = 
     textTransform: variant === 'label' ? 'uppercase' : undefined,
   };
 
+  // Match Swift SDK's TextBlockView behavior:
+  // - Position represents TOP-LEFT of the text container
+  // - maxWidth sets the max width for wrapping
+  // - Text naturally sizes to content (fit-content)
   const containerStyle: ViewStyle = {
     ...getStylingStyles(styling),
     maxWidth: maxWidth,
+    // Ensure text wraps within maxWidth (matching web's width: fit-content; max-width: 280px)
+    flexShrink: 1,
   };
 
   // Render rich text if available

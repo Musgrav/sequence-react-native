@@ -117,10 +117,17 @@ export function ButtonBlock({
   const txtColor = textColor || presetConfig?.style?.textColor || variantStyle.text;
   const btnBorderRadius = (presetConfig?.style?.borderRadius || borderRadius) * scaleFactor;
 
+  // Match Swift SDK's ButtonBlockView behavior:
+  // - Container maxWidth is set by FlowRenderer (280px for buttons)
+  // - fullWidth property controls whether button fills its container
+  // - When fullWidth == true, button expands to fill container (like .infinity in SwiftUI)
+  // - When fullWidth == false, button sizes to content
   const containerStyle: ViewStyle = {
     ...getStylingStyles(styling),
-    width: fullWidth ? (maxWidth || '100%') : 'auto',
-    maxWidth: maxWidth,
+    // Button container is limited by maxWidth from FlowRenderer
+    // fullWidth controls whether button fills that container
+    width: fullWidth ? maxWidth : undefined,
+    alignSelf: fullWidth ? 'stretch' : 'flex-start',
   };
 
   // Check if we should use gradient
@@ -136,6 +143,8 @@ export function ButtonBlock({
     alignItems: 'center',
     justifyContent: 'center',
     opacity: disabled ? 0.5 : 1,
+    // fullWidth buttons fill their container (matches Swift .frame(maxWidth: .infinity))
+    ...(fullWidth && { width: '100%' }),
     // Border for outline variant
     ...(variant === 'outline' && {
       borderWidth: 1,

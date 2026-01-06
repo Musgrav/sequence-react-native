@@ -11,10 +11,10 @@ interface IconBlockProps {
   scaleFactor?: number;
 }
 
-// Base icon sizes (in design canvas pixels)
+// Base icon sizes (in design canvas pixels) - must match Swift SDK
 const ICON_SIZES: Record<string, number> = {
   sm: 24,
-  md: 36,
+  md: 32,  // Swift SDK uses 32
   lg: 48,
   xl: 64,
   '2xl': 80,
