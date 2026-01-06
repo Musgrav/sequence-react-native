@@ -140,30 +140,24 @@ export function TextBlock({
   // Container style matching Swift SDK's TextBlockView:
   // - .frame(maxWidth: maxWidth, alignment: .leading)
   // - Position represents TOP-LEFT of text container
-  // - Text naturally sizes to content, maxWidth constrains wrapping
   //
-  // IMPORTANT: In React Native, we need explicit width for text to wrap properly
-  // The parent View in FlowRenderer already has maxWidth set, so we just need
-  // to ensure text can wrap within that constraint
+  // CRITICAL for React Native text wrapping:
+  // - Parent View in FlowRenderer sets explicit width on the positioning container
+  // - This inner View fills that width with width: '100%'
+  // - Text component inherits available width and wraps naturally
+  // - Do NOT set width/maxWidth on the Text component itself
   const containerStyle: ViewStyle = {
-    ...getStylingStyles(styling),
-    // Let container fill the available width from parent's maxWidth constraint
-    // This ensures text wraps properly within the bounds
+    // Fill the parent's width constraint (set by FlowRenderer)
     width: '100%',
-  };
-
-  // Text needs flexShrink to allow wrapping within container
-  const wrappedTextStyle: TextStyle = {
-    ...textStyle,
-    flexShrink: 1,
-    flexWrap: 'wrap',
+    // Apply any styling margins/padding to the container
+    ...getStylingStyles(styling),
   };
 
   // Render rich text if available
   if (richText && richText.length > 0) {
     return (
       <View style={containerStyle}>
-        <Text style={wrappedTextStyle}>
+        <Text style={textStyle}>
           {renderRichTextSpans(richText, color, scaledFontSize, scaleFactor)}
         </Text>
       </View>
@@ -173,9 +167,10 @@ export function TextBlock({
   // Interpolate variables in plain text
   const displayText = interpolateText(text, collectedData);
 
+  // Wrap Text in View that fills parent width - ensures proper text wrapping
   return (
     <View style={containerStyle}>
-      <Text style={wrappedTextStyle}>{displayText}</Text>
+      <Text style={textStyle}>{displayText}</Text>
     </View>
   );
 }
