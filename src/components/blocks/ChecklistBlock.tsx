@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
   Platform,
+  Animated,
 } from 'react-native';
 import type { ViewStyle, TextStyle } from 'react-native';
 import type { ChecklistBlockContent, BlockStyling, ButtonAction } from '../../types';
@@ -16,6 +17,49 @@ function CheckIcon({ color, size = 20 }: { color: string; size?: number }) {
     <View style={{ width: size, height: size, justifyContent: 'center', alignItems: 'center' }}>
       <Text style={{ fontSize: size * 0.8, color, fontWeight: '700' }}>✓</Text>
     </View>
+  );
+}
+
+/**
+ * AnimatedChecklistItem - Handles scale animation on selection
+ * Matches Swift SDK's .scaleEffect and .animation(.easeInOut(duration: 0.2))
+ */
+interface AnimatedChecklistItemProps {
+  isSelected: boolean;
+  targetScale: number; // 1.02 for cards, 1.05 for pills
+  style: ViewStyle;
+  onPress: () => void;
+  children: React.ReactNode;
+}
+
+function AnimatedChecklistItem({
+  isSelected,
+  targetScale,
+  style,
+  onPress,
+  children,
+}: AnimatedChecklistItemProps) {
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    // Animate scale with easeInOut, 200ms - matches Swift SDK exactly
+    Animated.timing(scaleAnim, {
+      toValue: isSelected ? targetScale : 1,
+      duration: 200,
+      useNativeDriver: true,
+    }).start();
+  }, [isSelected, targetScale, scaleAnim]);
+
+  return (
+    <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+      <TouchableOpacity
+        style={style}
+        onPress={onPress}
+        activeOpacity={0.7}
+      >
+        {children}
+      </TouchableOpacity>
+    </Animated.View>
   );
 }
 
@@ -171,7 +215,8 @@ export function ChecklistBlock({
     return '100%';
   };
 
-  // Render pills style - matches web editor exactly (lines 2197-2234)
+  // Render pills style - matches Swift SDK exactly
+  // Swift: .scaleEffect(isSelected ? 1.05 : 1.0) with .animation(.easeInOut(duration: 0.2))
   if (isPillStyle) {
     return (
       <View style={containerStyle}>
@@ -191,14 +236,12 @@ export function ChecklistBlock({
               borderRadius: borderRadius === 9999 ? 9999 : s(borderRadius),
               alignItems: 'center',
               justifyContent: 'center',
-              // Scale effect when selected
-              transform: isSelected ? [{ scale: 1.05 }] : undefined,
-              // Shadow glow effect when selected
+              // Shadow glow effect when selected - matches Swift SDK
               ...(isSelected && Platform.OS === 'ios' && {
                 shadowColor: activeColor,
-                shadowOffset: { width: 0, height: 4 },
+                shadowOffset: { width: 0, height: 2 },
                 shadowOpacity: 0.4,
-                shadowRadius: 14,
+                shadowRadius: 7,
               }),
               ...(isSelected && Platform.OS === 'android' && {
                 elevation: 8,
@@ -213,14 +256,15 @@ export function ChecklistBlock({
             };
 
             return (
-              <TouchableOpacity
+              <AnimatedChecklistItem
                 key={item.id}
+                isSelected={isSelected}
+                targetScale={1.05} // Swift SDK: 1.05 for pills
                 style={pillStyle}
                 onPress={() => handleItemPress(item.id)}
-                activeOpacity={0.7}
               >
                 <Text style={pillTextStyle}>{item.label}</Text>
-              </TouchableOpacity>
+              </AnimatedChecklistItem>
             );
           })}
         </View>
@@ -228,7 +272,8 @@ export function ChecklistBlock({
     );
   }
 
-  // Render cards style - matches web editor exactly (lines 2237-2287)
+  // Render cards style - matches Swift SDK exactly
+  // Swift: .scaleEffect(isSelected && style == .cards ? 1.02 : 1.0) with .animation(.easeInOut(duration: 0.2))
   if (isCardStyle) {
     return (
       <View style={containerStyle}>
@@ -237,10 +282,10 @@ export function ChecklistBlock({
             const isSelected = selectedItems.includes(item.id);
 
             // Cards: use activeColor with 15% opacity when selected (tinted background)
-            // When not selected, use backgroundColor or default rgba(255,255,255,0.05)
+            // When not selected, use backgroundColor or default rgba(255,255,255,0.1)
             const cardBgColor = isSelected
               ? hexToRgba(activeColor, 0.15)
-              : (backgroundColor || 'rgba(255,255,255,0.05)');
+              : (backgroundColor || 'rgba(255,255,255,0.1)');
 
             // Cards: text color stays the same (doesn't turn white)
             const cardTextColor = textColor;
@@ -252,18 +297,18 @@ export function ChecklistBlock({
               marginBottom: s(itemGap),
               width: getItemWidth(),
               position: 'relative',
-              // Scale effect when selected
-              transform: isSelected ? [{ scale: 1.02 }] : undefined,
               // Border
               ...getBorderStyle(isSelected),
-              // Shadow
-              ...(shadow && createShadowStyle({
-                offsetX: 0,
-                offsetY: isSelected ? 2 : 1,
-                blur: isSelected ? 8 : 3,
-                spread: 0,
-                color: isSelected ? 'rgba(0,0,0,0.15)' : 'rgba(0,0,0,0.1)',
-              })),
+              // Shadow - matches Swift SDK shadow when selected
+              ...(isSelected && Platform.OS === 'ios' && {
+                shadowColor: activeColor,
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.4,
+                shadowRadius: 7,
+              }),
+              ...(isSelected && Platform.OS === 'android' && {
+                elevation: 4,
+              }),
             };
 
             const cardTextStyle: TextStyle = {
@@ -274,11 +319,12 @@ export function ChecklistBlock({
             };
 
             return (
-              <TouchableOpacity
+              <AnimatedChecklistItem
                 key={item.id}
+                isSelected={isSelected}
+                targetScale={1.02} // Swift SDK: 1.02 for cards
                 style={cardStyle}
                 onPress={() => handleItemPress(item.id)}
-                activeOpacity={0.7}
               >
                 {/* Check icon in top right when selected */}
                 {isSelected && (
@@ -287,7 +333,7 @@ export function ChecklistBlock({
                   </View>
                 )}
                 <Text style={cardTextStyle}>{item.label}</Text>
-              </TouchableOpacity>
+              </AnimatedChecklistItem>
             );
           })}
         </View>
@@ -295,7 +341,8 @@ export function ChecklistBlock({
     );
   }
 
-  // Render list style (default) - matches web editor exactly (lines 2289-2337)
+  // Render list style (default) - matches Swift SDK exactly
+  // Swift: .scaleEffect(isSelected ? 1.02 : 1.0) with .animation(.easeInOut(duration: 0.2))
   return (
     <View style={containerStyle}>
       <View style={listStyle}>
@@ -303,10 +350,10 @@ export function ChecklistBlock({
           const isSelected = selectedItems.includes(item.id);
 
           // List: use activeColor with 20% opacity when selected (slightly more prominent than cards)
-          // When not selected, use backgroundColor or default rgba(255,255,255,0.05)
+          // When not selected, use backgroundColor or default rgba(255,255,255,0.1)
           const listBgColor = isSelected
             ? hexToRgba(activeColor, 0.2)
-            : (backgroundColor || 'rgba(255,255,255,0.05)');
+            : (backgroundColor || 'rgba(255,255,255,0.1)');
 
           // List: text color stays the same (doesn't turn white)
           const listTextColor = textColor;
@@ -320,14 +367,6 @@ export function ChecklistBlock({
             position: 'relative',
             // Border
             ...getBorderStyle(isSelected),
-            // Shadow
-            ...(shadow && createShadowStyle({
-              offsetX: 0,
-              offsetY: isSelected ? 2 : 1,
-              blur: isSelected ? 8 : 3,
-              spread: 0,
-              color: isSelected ? 'rgba(0,0,0,0.15)' : 'rgba(0,0,0,0.1)',
-            })),
           };
 
           const listTextStyle: TextStyle = {
@@ -338,11 +377,12 @@ export function ChecklistBlock({
           };
 
           return (
-            <TouchableOpacity
+            <AnimatedChecklistItem
               key={item.id}
+              isSelected={isSelected}
+              targetScale={1.02} // Swift SDK: 1.02 for list style
               style={listItemStyle}
               onPress={() => handleItemPress(item.id)}
-              activeOpacity={0.7}
             >
               {/* Check icon in top right when selected */}
               {isSelected && (
@@ -351,7 +391,7 @@ export function ChecklistBlock({
                 </View>
               )}
               <Text style={listTextStyle}>{item.label}</Text>
-            </TouchableOpacity>
+            </AnimatedChecklistItem>
           );
         })}
       </View>
