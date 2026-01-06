@@ -2,6 +2,23 @@ import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import type { ViewStyle } from 'react-native';
 
+// Try to import native linear gradient
+let NativeLinearGradient: React.ComponentType<{
+  colors: string[];
+  start?: { x: number; y: number };
+  end?: { x: number; y: number };
+  style?: ViewStyle;
+  children?: React.ReactNode;
+}> | null = null;
+
+try {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const nativeGradient = require('react-native-linear-gradient');
+  NativeLinearGradient = nativeGradient.default || nativeGradient;
+} catch {
+  // Native linear gradient not available, will use fallback
+}
+
 interface LinearGradientProps {
   colors: string[];
   start?: { x: number; y: number };
@@ -12,18 +29,13 @@ interface LinearGradientProps {
 }
 
 /**
- * A pure React Native LinearGradient implementation using layered Views.
- * This provides gradient support without requiring any external libraries.
- *
- * It works by stacking multiple semi-transparent color layers to approximate
- * a gradient effect. For most use cases (buttons, backgrounds), this provides
- * a visually acceptable result.
+ * LinearGradient component that uses native implementation when available,
+ * falls back to a layered View approximation otherwise.
  */
 export function LinearGradient({
   colors,
   start = { x: 0.5, y: 0 },
   end = { x: 0.5, y: 1 },
-  angle,
   style,
   children,
 }: LinearGradientProps) {
@@ -39,9 +51,22 @@ export function LinearGradient({
     );
   }
 
-  // For a simple two-color gradient, we layer the colors
-  // This creates a smooth visual transition
-  const numLayers = Math.min(colors.length * 5, 20); // More layers = smoother gradient
+  // Use native linear gradient if available
+  if (NativeLinearGradient) {
+    return (
+      <NativeLinearGradient
+        colors={colors}
+        start={start}
+        end={end}
+        style={style}
+      >
+        {children}
+      </NativeLinearGradient>
+    );
+  }
+
+  // Fallback: Create a smooth gradient approximation using layered views
+  const numLayers = Math.min(colors.length * 10, 30); // More layers = smoother gradient
   const layers: React.ReactNode[] = [];
 
   for (let i = 0; i < numLayers; i++) {
@@ -67,7 +92,6 @@ export function LinearGradient({
           StyleSheet.absoluteFill,
           {
             backgroundColor: blendedColor,
-            opacity: 1 / numLayers + 0.05, // Slight overlap for smoothness
           },
           positionStyle,
         ]}
@@ -78,28 +102,7 @@ export function LinearGradient({
 
   return (
     <View style={[style, styles.container]}>
-      {/* Base layer with first color */}
-      <View style={[StyleSheet.absoluteFill, { backgroundColor: colors[0] }]} />
-      {/* Gradient layers */}
       {layers}
-      {/* Content on top */}
-      {children}
-    </View>
-  );
-}
-
-/**
- * Simple fallback: just use the first color as a solid background.
- * This is used when gradient rendering is too complex.
- */
-export function GradientFallback({
-  colors,
-  style,
-  children,
-}: LinearGradientProps) {
-  const backgroundColor = colors && colors.length > 0 ? colors[0] : 'transparent';
-  return (
-    <View style={[style, { backgroundColor }]}>
       {children}
     </View>
   );
@@ -115,22 +118,31 @@ function getLayerPosition(
   const progress = index / (total - 1);
 
   // Determine gradient direction
-  const isVertical = Math.abs(end.y - start.y) > Math.abs(end.x - start.x);
-  const isReversed = isVertical ? (end.y < start.y) : (end.x < start.x);
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  const isVertical = Math.abs(dy) >= Math.abs(dx);
 
   if (isVertical) {
-    // Vertical gradient (top to bottom or bottom to top)
-    const position = isReversed ? (1 - progress) : progress;
+    // Vertical gradient
+    const isDownward = dy >= 0;
+    const layerHeight = 100 / total;
+    const position = isDownward ? progress * 100 : (1 - progress) * 100;
     return {
-      top: `${position * 100}%`,
-      height: `${100 / total + 10}%`, // Slight overlap
+      top: `${position}%`,
+      height: `${layerHeight + 2}%`, // Slight overlap to prevent gaps
+      left: 0,
+      right: 0,
     };
   } else {
-    // Horizontal gradient (left to right or right to left)
-    const position = isReversed ? (1 - progress) : progress;
+    // Horizontal gradient
+    const isRightward = dx >= 0;
+    const layerWidth = 100 / total;
+    const position = isRightward ? progress * 100 : (1 - progress) * 100;
     return {
-      left: `${position * 100}%`,
-      width: `${100 / total + 10}%`, // Slight overlap
+      left: `${position}%`,
+      width: `${layerWidth + 2}%`, // Slight overlap to prevent gaps
+      top: 0,
+      bottom: 0,
     };
   }
 }
@@ -149,7 +161,10 @@ function blendColors(color1: string, color2: string, ratio: number): string {
   const b = Math.round(rgb1.b + (rgb2.b - rgb1.b) * ratio);
   const a = rgb1.a + (rgb2.a - rgb1.a) * ratio;
 
-  return `rgba(${r}, ${g}, ${b}, ${a})`;
+  if (a < 1) {
+    return `rgba(${r}, ${g}, ${b}, ${a.toFixed(2)})`;
+  }
+  return `rgb(${r}, ${g}, ${b})`;
 }
 
 // Parse color string to RGB values

@@ -1,14 +1,11 @@
 import React from 'react';
-import { Text, View, StyleSheet } from 'react-native';
+import { Text, View } from 'react-native';
 import type { TextStyle, ViewStyle } from 'react-native';
 import type { TextBlockContent, TextSpan, BlockStyling } from '../../types';
 import {
   getStylingStyles,
   getFontWeight,
-  getVariantFontSize,
-  getVariantFontWeight,
   getTextAlign,
-  scale,
 } from '../../utils/styles';
 
 interface TextBlockProps {
@@ -20,6 +17,38 @@ interface TextBlockProps {
   /** Max width for the text block */
   maxWidth?: number;
 }
+
+/**
+ * TextBlock - Matches Swift SDK's TextBlockView exactly
+ *
+ * Swift SDK Reference (OnboardingView.swift lines 514-602):
+ * - Font sizes by variant: h1=34, h2=28, h3=22, body=16, caption=12, label=14
+ * - Font weights by variant: h1/h2=bold, h3=semibold, label=medium, default=regular
+ * - Position represents TOP-LEFT of text container
+ * - maxWidth 280px (scaled) for text wrapping
+ * - .multilineTextAlignment() for text alignment within container
+ * - .lineLimit(nil) allows unlimited lines
+ */
+
+// Font sizes matching Swift SDK exactly
+const VARIANT_FONT_SIZE: Record<string, number> = {
+  h1: 34,
+  h2: 28,
+  h3: 22,
+  body: 16,
+  caption: 12,
+  label: 14,
+};
+
+// Font weights matching Swift SDK exactly
+const VARIANT_FONT_WEIGHT: Record<string, TextStyle['fontWeight']> = {
+  h1: '700', // bold
+  h2: '700', // bold
+  h3: '600', // semibold
+  label: '500', // medium
+  body: '400', // regular
+  caption: '400', // regular
+};
 
 /**
  * Interpolate variables in text (e.g., {fieldName})
@@ -42,7 +71,8 @@ function interpolateText(
 function renderRichTextSpans(
   spans: TextSpan[],
   defaultColor?: string,
-  defaultFontSize?: number
+  defaultFontSize?: number,
+  scaleFactor: number = 1
 ): React.ReactNode[] {
   return spans.map((span, index) => {
     const style: TextStyle = {
@@ -51,7 +81,7 @@ function renderRichTextSpans(
       fontStyle: span.italic ? 'italic' : undefined,
       textDecorationLine: span.underline ? 'underline' : undefined,
       fontFamily: span.fontFamily,
-      fontSize: span.fontSize ? scale(span.fontSize) : defaultFontSize,
+      fontSize: span.fontSize ? span.fontSize * scaleFactor : defaultFontSize,
     };
 
     return (
@@ -62,11 +92,17 @@ function renderRichTextSpans(
   });
 }
 
-export function TextBlock({ content, styling, collectedData = {}, scaleFactor = 1, maxWidth }: TextBlockProps) {
+export function TextBlock({
+  content,
+  styling,
+  collectedData = {},
+  scaleFactor = 1,
+  maxWidth,
+}: TextBlockProps) {
   const {
     text,
     variant = 'body',
-    color = '#000000',
+    color = '#ffffff', // Swift SDK default
     align = 'center',
     fontWeight,
     fontFamily,
@@ -76,38 +112,37 @@ export function TextBlock({ content, styling, collectedData = {}, scaleFactor = 
     richText,
   } = content;
 
-  // Calculate font size based on variant or custom, then scale by scaleFactor
-  const baseFontSize = fontSize || getVariantFontSize(variant);
-  const scaledFontSize = baseFontSize * scaleFactor;
+  // Helper function for scaling
+  const s = (v: number) => v * scaleFactor;
 
-  // Calculate font weight based on variant or custom
-  const baseWeight = fontWeight
+  // Calculate font size: custom fontSize overrides variant default
+  const baseFontSize = fontSize ?? VARIANT_FONT_SIZE[variant] ?? 16;
+  const scaledFontSize = s(baseFontSize);
+
+  // Calculate font weight: custom fontWeight overrides variant default
+  const computedWeight = fontWeight
     ? getFontWeight(fontWeight)
-    : getVariantFontWeight(variant);
+    : VARIANT_FONT_WEIGHT[variant] ?? '400';
 
+  // Text style matching Swift SDK
   const textStyle: TextStyle = {
     fontSize: scaledFontSize,
-    fontWeight: baseWeight,
+    fontWeight: computedWeight,
     color,
     textAlign: getTextAlign(align),
     fontFamily,
-    lineHeight: lineHeight ? lineHeight * baseFontSize * scaleFactor : undefined,
-    letterSpacing: letterSpacing ? letterSpacing * scaleFactor : undefined,
-    // Apply variant-specific opacity for caption/label
-    opacity: variant === 'caption' ? 0.7 : variant === 'label' ? 0.6 : 1,
-    // Label variant is uppercase
-    textTransform: variant === 'label' ? 'uppercase' : undefined,
+    // Line height: Swift uses lineHeight multiplier * fontSize
+    lineHeight: lineHeight ? s(lineHeight * baseFontSize) : undefined,
+    // Letter spacing scaled
+    letterSpacing: letterSpacing ? s(letterSpacing) : undefined,
   };
 
-  // Match Swift SDK's TextBlockView behavior:
-  // - Position represents TOP-LEFT of the text container
-  // - maxWidth sets the max width for wrapping
-  // - Text naturally sizes to content (fit-content)
+  // Container style matching Swift SDK's TextBlockView:
+  // - .frame(maxWidth: maxWidth, alignment: .leading)
+  // - Position represents TOP-LEFT of text container
   const containerStyle: ViewStyle = {
     ...getStylingStyles(styling),
     maxWidth: maxWidth,
-    // Ensure text wraps within maxWidth (matching web's width: fit-content; max-width: 280px)
-    flexShrink: 1,
   };
 
   // Render rich text if available
@@ -115,7 +150,7 @@ export function TextBlock({ content, styling, collectedData = {}, scaleFactor = 
     return (
       <View style={containerStyle}>
         <Text style={textStyle}>
-          {renderRichTextSpans(richText, color, scaledFontSize)}
+          {renderRichTextSpans(richText, color, scaledFontSize, scaleFactor)}
         </Text>
       </View>
     );

@@ -101,14 +101,38 @@ export function FlowRenderer({
     [screens, transitions]
   );
 
-  // Animate screen transition
+  // Animate screen transition - matches Swift SDK exactly
+  // Swift uses: .transition(.asymmetric(
+  //   insertion: .move(edge: .trailing).combined(with: .opacity),
+  //   removal: .move(edge: .leading).combined(with: .opacity)
+  // ))
+  // Duration: 0.3s with easeInOut
   const animateTransition = useCallback(
     (transition: ScreenTransition, isForward: boolean, callback: () => void) => {
-      // Reset animation values
-      slideAnim.setValue(isForward ? SCREEN_WIDTH : -SCREEN_WIDTH);
-      fadeAnim.setValue(0);
+      const duration = 300; // 0.3s - matches Swift SDK
 
-      const duration = 300;
+      // Default transition: slide + fade (matching Swift SDK asymmetric transition)
+      // Forward: slide in from right + fade in
+      // Backward: slide in from left + fade in
+      const defaultTransition = () => {
+        // Set initial position: new screen comes from right (forward) or left (backward)
+        slideAnim.setValue(isForward ? SCREEN_WIDTH : -SCREEN_WIDTH);
+        fadeAnim.setValue(0);
+
+        // Animate both slide and fade together
+        Animated.parallel([
+          Animated.timing(slideAnim, {
+            toValue: 0,
+            duration,
+            useNativeDriver: true,
+          }),
+          Animated.timing(fadeAnim, {
+            toValue: 1,
+            duration,
+            useNativeDriver: true,
+          }),
+        ]).start(callback);
+      };
 
       switch (transition) {
         case 'none':
@@ -118,20 +142,29 @@ export function FlowRenderer({
           break;
 
         case 'fade':
+          slideAnim.setValue(0);
+          fadeAnim.setValue(0);
           Animated.timing(fadeAnim, {
             toValue: 1,
             duration,
             useNativeDriver: true,
           }).start(callback);
-          slideAnim.setValue(0);
           break;
 
         case 'slide-left':
+          // Slide in from right
+          slideAnim.setValue(SCREEN_WIDTH);
+          fadeAnim.setValue(1);
+          Animated.timing(slideAnim, {
+            toValue: 0,
+            duration,
+            useNativeDriver: true,
+          }).start(callback);
+          break;
+
         case 'slide-right':
-          const slideValue = transition === 'slide-left'
-            ? (isForward ? SCREEN_WIDTH : -SCREEN_WIDTH)
-            : (isForward ? -SCREEN_WIDTH : SCREEN_WIDTH);
-          slideAnim.setValue(slideValue);
+          // Slide in from left
+          slideAnim.setValue(-SCREEN_WIDTH);
           fadeAnim.setValue(1);
           Animated.timing(slideAnim, {
             toValue: 0,
@@ -142,8 +175,9 @@ export function FlowRenderer({
 
         case 'slide-up':
         case 'slide-down':
+          // For now, use fade for vertical transitions
           slideAnim.setValue(0);
-          fadeAnim.setValue(1);
+          fadeAnim.setValue(0);
           Animated.timing(fadeAnim, {
             toValue: 1,
             duration,
@@ -153,6 +187,7 @@ export function FlowRenderer({
 
         case 'scale':
           slideAnim.setValue(0);
+          fadeAnim.setValue(0);
           Animated.timing(fadeAnim, {
             toValue: 1,
             duration,
@@ -161,12 +196,8 @@ export function FlowRenderer({
           break;
 
         default:
-          Animated.timing(fadeAnim, {
-            toValue: 1,
-            duration,
-            useNativeDriver: true,
-          }).start(callback);
-          slideAnim.setValue(0);
+          // Default: slide + fade (matching Swift SDK)
+          defaultTransition();
       }
     },
     [slideAnim, fadeAnim]
@@ -324,8 +355,8 @@ export function FlowRenderer({
 
   // Determine if a block should use full width
   // IMPORTANT: This must match Swift SDK's OnboardingView.swift exactly
-  // Full-width blocks: checklist, input, slider, progress, divider
-  // Text-width blocks: text, icon, image, button
+  // Full-width blocks: checklist, input, slider, progress, divider, button (with fullWidth=true)
+  // Text-width blocks: text, icon, image
   const getBlockMaxWidth = (block: ContentBlock): number => {
     switch (block.type) {
       case 'checklist':
@@ -334,9 +365,11 @@ export function FlowRenderer({
       case 'divider':
       case 'slider':
         return fullWidthMaxWidth;
-      // All other blocks (text, icon, image, button) use text width
-      // Button's fullWidth property controls whether it fills its container,
-      // but the container itself is limited to textMaxWidth
+      case 'button':
+        // Buttons with fullWidth=true (default) should use full width
+        const buttonContent = block.content as { fullWidth?: boolean };
+        return buttonContent.fullWidth !== false ? fullWidthMaxWidth : textMaxWidth;
+      // Text, icon, image use text width
       default:
         return textMaxWidth;
     }
@@ -376,9 +409,11 @@ export function FlowRenderer({
             const scaledY = pos.y * yScale;
             const maxWidth = getBlockMaxWidth(block);
 
-            // For full-width blocks (checklist, input, etc.), set explicit width
+            // For full-width blocks (checklist, input, button, etc.), set explicit width
             // For text-width blocks, let them size to content within maxWidth
-            const isFullWidthBlock = ['checklist', 'input', 'progress', 'divider', 'slider'].includes(block.type);
+            const buttonContent = block.content as { fullWidth?: boolean };
+            const isFullWidthBlock = ['checklist', 'input', 'progress', 'divider', 'slider'].includes(block.type) ||
+              (block.type === 'button' && buttonContent.fullWidth !== false);
 
             return (
               <View
