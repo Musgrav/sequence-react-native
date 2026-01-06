@@ -494,7 +494,15 @@ export function FlowRenderer({
         // Buttons with fullWidth=true (default) should use full width
         const buttonContent = block.content as { fullWidth?: boolean };
         return buttonContent.fullWidth !== false ? fullWidthMaxWidth : textMaxWidth;
-      // Text, icon, image use text width
+      case 'text':
+        // Check for explicit width in styling
+        if (block.styling?.width && typeof block.styling.width === 'number') {
+          return block.styling.width * uniformScale;
+        }
+        // For text blocks, use full width to allow proper centering and wrapping
+        // The text alignment property handles visual centering within this width
+        return fullWidthMaxWidth;
+      // Icon, image use text width
       default:
         // Check for explicit width in styling
         if (block.styling?.width && typeof block.styling.width === 'number') {
@@ -562,27 +570,20 @@ export function FlowRenderer({
             // Calculate effective width for clipping prevention
             const effectiveWidth = blockWidth ?? (needsExplicitWidth ? maxWidth : undefined);
 
-            // Prevent content from being clipped at screen edge
-            // For text blocks with center alignment, we need to ensure the full text fits
-            // Strategy: If the block would overflow the right edge, extend width to screen edge
-            // and let the centered text position itself correctly within
+            // For text and button blocks, always use full width with standard padding
+            // This ensures centered text renders correctly and buttons span the expected width
             let adjustedWidth = effectiveWidth;
             let adjustedX = scaledX;
+            const standardPadding = 24 * uniformScale;
 
-            if (effectiveWidth !== undefined && scaledX + effectiveWidth > SCREEN_WIDTH) {
-              // For text blocks, give them more room by using available space
-              // This ensures centered text can render fully
-              const availableWidth = SCREEN_WIDTH - scaledX - (8 * uniformScale);
-
-              // If the position itself is causing clipping, try to use more of the screen
-              if (block.type === 'text' && availableWidth < effectiveWidth) {
-                // Center the text block on screen instead
-                const padding = 24 * uniformScale;
-                adjustedWidth = SCREEN_WIDTH - (padding * 2);
-                adjustedX = padding;
-              } else {
-                adjustedWidth = availableWidth;
-              }
+            if (block.type === 'text' || block.type === 'button') {
+              // Use full width with padding for text and buttons
+              // This ensures they can center properly and not get clipped
+              adjustedX = standardPadding;
+              adjustedWidth = SCREEN_WIDTH - (standardPadding * 2);
+            } else if (effectiveWidth !== undefined && scaledX + effectiveWidth > SCREEN_WIDTH) {
+              // For other blocks, just prevent overflow
+              adjustedWidth = SCREEN_WIDTH - scaledX - (8 * uniformScale);
             }
 
             return (
