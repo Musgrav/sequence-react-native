@@ -38,6 +38,10 @@ interface ChecklistBlockProps {
   selectedItems: string[];
   onSelectionChange: (fieldName: string | undefined, selectedIds: string[]) => void;
   onAction?: (action: ButtonAction) => void;
+  /** Scale factor for proportional sizing in WYSIWYG mode */
+  scaleFactor?: number;
+  /** Max width for the checklist block */
+  maxWidth?: number;
 }
 
 export function ChecklistBlock({
@@ -46,6 +50,8 @@ export function ChecklistBlock({
   selectedItems = [],
   onSelectionChange,
   onAction,
+  scaleFactor = 1,
+  maxWidth,
 }: ChecklistBlockProps) {
   const {
     items,
@@ -76,8 +82,11 @@ export function ChecklistBlock({
 
   const containerStyle: ViewStyle = {
     ...getStylingStyles(styling),
-    width: '100%',
+    width: maxWidth || '100%',
   };
+
+  // Helper function to scale values with scaleFactor
+  const s = (value: number) => value * scaleFactor;
 
   const handleItemPress = async (itemId: string) => {
     // Trigger haptic feedback
@@ -158,7 +167,7 @@ export function ChecklistBlock({
   const getItemWidth = (): ViewStyle['width'] => {
     if (isPillStyle) return 'auto';
     if (columns === 2) return '48%';
-    if (typeof itemWidth === 'number') return scale(itemWidth);
+    if (typeof itemWidth === 'number') return s(itemWidth);
     return '100%';
   };
 
@@ -166,7 +175,7 @@ export function ChecklistBlock({
   if (isPillStyle) {
     return (
       <View style={containerStyle}>
-        <View style={[listStyle, { gap: scale(itemGap) }]}>
+        <View style={[listStyle, { gap: s(itemGap) }]}>
           {items.map((item) => {
             const isSelected = selectedItems.includes(item.id);
 
@@ -177,9 +186,9 @@ export function ChecklistBlock({
 
             const pillStyle: ViewStyle = {
               backgroundColor: itemBgColor,
-              paddingVertical: scale(itemPadding * 0.7),
-              paddingHorizontal: scale(itemPadding * 1.5),
-              borderRadius: borderRadius === 9999 ? 9999 : scale(borderRadius),
+              paddingVertical: s(itemPadding * 0.7),
+              paddingHorizontal: s(itemPadding * 1.5),
+              borderRadius: borderRadius === 9999 ? 9999 : s(borderRadius),
               alignItems: 'center',
               justifyContent: 'center',
               // Scale effect when selected
@@ -197,7 +206,7 @@ export function ChecklistBlock({
             };
 
             const pillTextStyle: TextStyle = {
-              fontSize: scale(fontSize),
+              fontSize: s(fontSize),
               color: itemTextColor,
               fontWeight: '500',
               textAlign: 'center',
@@ -238,9 +247,9 @@ export function ChecklistBlock({
 
             const cardStyle: ViewStyle = {
               backgroundColor: cardBgColor,
-              padding: scale(itemPadding),
-              borderRadius: scale(borderRadius),
-              marginBottom: scale(itemGap),
+              padding: s(itemPadding),
+              borderRadius: s(borderRadius),
+              marginBottom: s(itemGap),
               width: getItemWidth(),
               position: 'relative',
               // Scale effect when selected
@@ -258,7 +267,7 @@ export function ChecklistBlock({
             };
 
             const cardTextStyle: TextStyle = {
-              fontSize: scale(fontSize),
+              fontSize: s(fontSize),
               color: cardTextColor,
               fontWeight: '500',
               textAlign: 'left',
@@ -273,8 +282,8 @@ export function ChecklistBlock({
               >
                 {/* Check icon in top right when selected */}
                 {isSelected && (
-                  <View style={styles.checkIconContainer}>
-                    <CheckIcon color={activeColor} size={scale(20)} />
+                  <View style={[styles.checkIconContainer, { top: s(8), right: s(8) }]}>
+                    <CheckIcon color={activeColor} size={s(20)} />
                   </View>
                 )}
                 <Text style={cardTextStyle}>{item.label}</Text>
@@ -304,9 +313,9 @@ export function ChecklistBlock({
 
           const listItemStyle: ViewStyle = {
             backgroundColor: listBgColor,
-            padding: scale(itemPadding),
-            borderRadius: scale(borderRadius),
-            marginBottom: scale(itemGap),
+            padding: s(itemPadding),
+            borderRadius: s(borderRadius),
+            marginBottom: s(itemGap),
             width: getItemWidth(),
             position: 'relative',
             // Border
@@ -322,7 +331,7 @@ export function ChecklistBlock({
           };
 
           const listTextStyle: TextStyle = {
-            fontSize: scale(fontSize),
+            fontSize: s(fontSize),
             color: listTextColor,
             fontWeight: '400',
             textAlign: 'left',
@@ -337,8 +346,8 @@ export function ChecklistBlock({
             >
               {/* Check icon in top right when selected */}
               {isSelected && (
-                <View style={styles.checkIconContainer}>
-                  <CheckIcon color={activeColor} size={scale(20)} />
+                <View style={[styles.checkIconContainer, { top: s(8), right: s(8) }]}>
+                  <CheckIcon color={activeColor} size={s(20)} />
                 </View>
               )}
               <Text style={listTextStyle}>{item.label}</Text>
@@ -353,7 +362,5 @@ export function ChecklistBlock({
 const styles = StyleSheet.create({
   checkIconContainer: {
     position: 'absolute',
-    top: 8,
-    right: 8,
   },
 });

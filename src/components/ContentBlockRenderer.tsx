@@ -41,6 +41,10 @@ interface ContentBlockRendererProps {
   totalScreens: number;
   validationErrors?: Set<string>;
   renderCustomBlock?: (identifier: string, props?: Record<string, unknown>) => React.ReactNode;
+  /** Scale factor for proportional sizing in WYSIWYG mode */
+  scaleFactor?: number;
+  /** Max width for the block content */
+  maxWidth?: number;
 }
 
 export function ContentBlockRenderer({
@@ -52,6 +56,8 @@ export function ContentBlockRenderer({
   totalScreens,
   validationErrors = new Set(),
   renderCustomBlock,
+  scaleFactor = 1,
+  maxWidth,
 }: ContentBlockRendererProps) {
   const { type, content, styling, animation, visible = true, pinToBottom } = block;
 
@@ -187,6 +193,8 @@ export function ContentBlockRenderer({
             content={content as TextBlockContent}
             styling={styling}
             collectedData={collectedData}
+            scaleFactor={scaleFactor}
+            maxWidth={maxWidth}
           />
         );
 
@@ -195,6 +203,8 @@ export function ContentBlockRenderer({
           <ImageBlock
             content={content as ImageBlockContent}
             styling={styling}
+            scaleFactor={scaleFactor}
+            maxWidth={maxWidth}
           />
         );
 
@@ -204,6 +214,8 @@ export function ContentBlockRenderer({
             content={content as ButtonBlockContent}
             styling={styling}
             onPress={onAction}
+            scaleFactor={scaleFactor}
+            maxWidth={maxWidth}
           />
         );
 
@@ -217,6 +229,8 @@ export function ContentBlockRenderer({
             value={typeof value === 'string' ? value : ''}
             onChangeValue={(fieldName, val) => onDataChange(fieldName, val)}
             hasError={validationErrors.has(inputContent.fieldName)}
+            scaleFactor={scaleFactor}
+            maxWidth={maxWidth}
           />
         );
       }
@@ -237,6 +251,8 @@ export function ContentBlockRenderer({
               }
             }}
             onAction={onAction}
+            scaleFactor={scaleFactor}
+            maxWidth={maxWidth}
           />
         );
       }
@@ -250,6 +266,8 @@ export function ContentBlockRenderer({
             styling={styling}
             value={typeof value === 'number' ? value : sliderContent.defaultValue}
             onChangeValue={(fieldName, val) => onDataChange(fieldName, val)}
+            scaleFactor={scaleFactor}
+            maxWidth={maxWidth}
           />
         );
       }
@@ -259,6 +277,7 @@ export function ContentBlockRenderer({
           <SpacerBlock
             content={content as SpacerBlockContent}
             styling={styling}
+            scaleFactor={scaleFactor}
           />
         );
 
@@ -267,6 +286,8 @@ export function ContentBlockRenderer({
           <DividerBlock
             content={content as DividerBlockContent}
             styling={styling}
+            scaleFactor={scaleFactor}
+            maxWidth={maxWidth}
           />
         );
 
@@ -275,6 +296,7 @@ export function ContentBlockRenderer({
           <IconBlock
             content={content as IconBlockContent}
             styling={styling}
+            scaleFactor={scaleFactor}
           />
         );
 
@@ -283,6 +305,8 @@ export function ContentBlockRenderer({
           <FeatureCardBlock
             content={content as FeatureCardBlockContent}
             styling={styling}
+            scaleFactor={scaleFactor}
+            maxWidth={maxWidth}
           />
         );
 
@@ -293,6 +317,8 @@ export function ContentBlockRenderer({
             styling={styling}
             currentScreenIndex={currentScreenIndex}
             totalScreens={totalScreens}
+            scaleFactor={scaleFactor}
+            maxWidth={maxWidth}
           />
         );
 

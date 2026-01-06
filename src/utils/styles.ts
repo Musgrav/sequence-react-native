@@ -22,6 +22,27 @@ export function scale(value: number): number {
 }
 
 /**
+ * Scale X coordinate from design canvas to device screen (width-based)
+ */
+export function scaleX(value: number): number {
+  return value * (SCREEN_WIDTH / DESIGN_CANVAS.width);
+}
+
+/**
+ * Scale Y coordinate from design canvas to device screen (height-based)
+ */
+export function scaleY(value: number): number {
+  return value * (SCREEN_HEIGHT / DESIGN_CANVAS.height);
+}
+
+/**
+ * Get the uniform scale factor (width-based) for proportional sizing
+ */
+export function getUniformScale(): number {
+  return SCREEN_WIDTH / DESIGN_CANVAS.width;
+}
+
+/**
  * Convert hex color to rgba
  */
 export function hexToRgba(hex: string, alpha: number = 1): string {

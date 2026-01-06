@@ -32,6 +32,10 @@ interface SliderBlockProps {
   styling?: BlockStyling;
   value?: number;
   onChangeValue: (fieldName: string, value: number) => void;
+  /** Scale factor for proportional sizing in WYSIWYG mode */
+  scaleFactor?: number;
+  /** Max width for the slider block */
+  maxWidth?: number;
 }
 
 export function SliderBlock({
@@ -39,6 +43,8 @@ export function SliderBlock({
   styling,
   value,
   onChangeValue,
+  scaleFactor = 1,
+  maxWidth,
 }: SliderBlockProps) {
   const {
     fieldName,
@@ -65,9 +71,12 @@ export function SliderBlock({
 
   const currentValue = value ?? defaultValue;
 
+  // Helper function for scaling
+  const s = (v: number) => v * scaleFactor;
+
   const containerStyle: ViewStyle = {
     ...getStylingStyles(styling),
-    width: width === 'full' ? '100%' : scale(width),
+    width: maxWidth || (width === 'full' ? '100%' : s(width as number)),
     alignItems: 'center',
   };
 
@@ -78,13 +87,13 @@ export function SliderBlock({
   return (
     <View style={containerStyle}>
       {showValue && (
-        <View style={styles.valueContainer}>
+        <View style={[styles.valueContainer, { marginBottom: s(16) }]}>
           <Text
             style={[
               styles.valueText,
               {
                 color: valueColor,
-                fontSize: scale(valueFontSize),
+                fontSize: s(valueFontSize),
                 fontWeight: getFontWeight(valueFontWeight),
               },
             ]}
@@ -98,7 +107,7 @@ export function SliderBlock({
                 styles.suffixText,
                 {
                   color: valueColor,
-                  fontSize: scale(suffixFontSize || valueFontSize * 0.5),
+                  fontSize: s(suffixFontSize || valueFontSize * 0.5),
                 },
               ]}
             >

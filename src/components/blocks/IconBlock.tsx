@@ -2,15 +2,29 @@ import React from 'react';
 import { View, Text } from 'react-native';
 import type { ViewStyle, TextStyle } from 'react-native';
 import type { IconBlockContent, BlockStyling } from '../../types';
-import { getStylingStyles, getIconSize } from '../../utils/styles';
+import { getStylingStyles } from '../../utils/styles';
 
 interface IconBlockProps {
   content: IconBlockContent;
   styling?: BlockStyling;
+  /** Scale factor for proportional sizing in WYSIWYG mode */
+  scaleFactor?: number;
 }
 
-export function IconBlock({ content, styling }: IconBlockProps) {
+// Base icon sizes (in design canvas pixels)
+const ICON_SIZES: Record<string, number> = {
+  sm: 24,
+  md: 36,
+  lg: 48,
+  xl: 64,
+  '2xl': 80,
+};
+
+export function IconBlock({ content, styling, scaleFactor = 1 }: IconBlockProps) {
   const { icon, size = 'lg', color } = content;
+
+  const baseSize = ICON_SIZES[size] || ICON_SIZES.lg;
+  const scaledSize = baseSize * scaleFactor;
 
   const containerStyle: ViewStyle = {
     ...getStylingStyles(styling),
@@ -19,7 +33,7 @@ export function IconBlock({ content, styling }: IconBlockProps) {
   };
 
   const iconStyle: TextStyle = {
-    fontSize: getIconSize(size),
+    fontSize: scaledSize,
     color: color,
     textAlign: 'center',
   };

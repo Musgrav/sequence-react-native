@@ -32,6 +32,10 @@ interface ProgressBlockProps {
   styling?: BlockStyling;
   currentScreenIndex: number;
   totalScreens: number;
+  /** Scale factor for proportional sizing in WYSIWYG mode */
+  scaleFactor?: number;
+  /** Max width for the progress block */
+  maxWidth?: number;
 }
 
 export function ProgressBlock({
@@ -39,6 +43,8 @@ export function ProgressBlock({
   styling,
   currentScreenIndex,
   totalScreens,
+  scaleFactor = 1,
+  maxWidth,
 }: ProgressBlockProps) {
   const {
     variant = 'bar',
@@ -65,9 +71,12 @@ export function ProgressBlock({
   const effectiveCurrent = Math.max(0, Math.min(currentScreenIndex - effectiveStart, effectiveTotal - 1));
   const progress = effectiveTotal > 1 ? effectiveCurrent / (effectiveTotal - 1) : 1;
 
+  // Helper function for scaling
+  const s = (v: number) => v * scaleFactor;
+
   const containerStyle: ViewStyle = {
     ...getStylingStyles(styling),
-    width: '100%',
+    width: maxWidth || '100%',
     alignItems: 'center',
   };
 
@@ -78,7 +87,7 @@ export function ProgressBlock({
         <View
           style={[
             styles.barTrack,
-            { height: scale(height), backgroundColor: trackColor },
+            { height: s(height), backgroundColor: trackColor },
           ]}
         >
           <View
@@ -92,7 +101,7 @@ export function ProgressBlock({
           />
         </View>
         {showPercentage && (
-          <Text style={styles.percentageText}>
+          <Text style={[styles.percentageText, { fontSize: s(14), marginTop: s(8) }]}>
             {Math.round(progress * 100)}%
           </Text>
         )}
@@ -111,11 +120,11 @@ export function ProgressBlock({
               style={[
                 styles.dot,
                 {
-                  width: scale(dotSize),
-                  height: scale(dotSize),
-                  borderRadius: scale(dotSize) / 2,
+                  width: s(dotSize),
+                  height: s(dotSize),
+                  borderRadius: s(dotSize) / 2,
                   backgroundColor: index <= effectiveCurrent ? activeColor : inactiveColor,
-                  marginHorizontal: scale(4),
+                  marginHorizontal: s(4),
                 },
               ]}
             />
@@ -136,9 +145,9 @@ export function ProgressBlock({
                 style={[
                   styles.stepCircle,
                   {
-                    width: scale(24),
-                    height: scale(24),
-                    borderRadius: scale(12),
+                    width: s(24),
+                    height: s(24),
+                    borderRadius: s(12),
                     backgroundColor: index <= effectiveCurrent ? activeColor : inactiveColor,
                   },
                 ]}
@@ -146,14 +155,14 @@ export function ProgressBlock({
                 <Text
                   style={[
                     styles.stepNumber,
-                    { color: index <= effectiveCurrent ? '#FFFFFF' : '#666666' },
+                    { color: index <= effectiveCurrent ? '#FFFFFF' : '#666666', fontSize: s(12) },
                   ]}
                 >
                   {index + 1}
                 </Text>
               </View>
               {showLabels && labels && labels[index] && (
-                <Text style={styles.stepLabel}>{labels[index]}</Text>
+                <Text style={[styles.stepLabel, { fontSize: s(12), marginTop: s(4) }]}>{labels[index]}</Text>
               )}
               {index < effectiveTotal - 1 && (
                 <View
@@ -161,6 +170,8 @@ export function ProgressBlock({
                     styles.stepLine,
                     {
                       backgroundColor: index < effectiveCurrent ? activeColor : inactiveColor,
+                      width: s(40),
+                      marginHorizontal: s(4),
                     },
                   ]}
                 />
@@ -181,7 +192,7 @@ export function ProgressBlock({
           <View
             style={[
               styles.barTrack,
-              { height: scale(height), backgroundColor: trackColor },
+              { height: s(height), backgroundColor: trackColor },
             ]}
           >
             <View
@@ -195,7 +206,7 @@ export function ProgressBlock({
             />
           </View>
           {showPercentage && (
-            <Text style={styles.percentageText}>
+            <Text style={[styles.percentageText, { fontSize: s(14), marginTop: s(8) }]}>
               {Math.round(progress * 100)}%
             </Text>
           )}
@@ -203,8 +214,8 @@ export function ProgressBlock({
       );
     }
 
-    const ringSize = scale(size);
-    const ringStrokeWidth = scale(strokeWidth);
+    const ringSize = s(size);
+    const ringStrokeWidth = s(strokeWidth);
     const radius = (ringSize - ringStrokeWidth) / 2;
     const circumference = 2 * Math.PI * radius;
     const strokeDashoffset = circumference * (1 - progress);
@@ -238,7 +249,7 @@ export function ProgressBlock({
           </Svg>
           {showPercentage && (
             <View style={styles.ringPercentageContainer}>
-              <Text style={styles.ringPercentageText}>
+              <Text style={[styles.ringPercentageText, { fontSize: s(16) }]}>
                 {Math.round(progress * 100)}%
               </Text>
             </View>

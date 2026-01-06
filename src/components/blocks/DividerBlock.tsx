@@ -2,14 +2,18 @@ import React from 'react';
 import { View } from 'react-native';
 import type { ViewStyle } from 'react-native';
 import type { DividerBlockContent, BlockStyling } from '../../types';
-import { getStylingStyles, scale } from '../../utils/styles';
+import { getStylingStyles } from '../../utils/styles';
 
 interface DividerBlockProps {
   content: DividerBlockContent;
   styling?: BlockStyling;
+  /** Scale factor for proportional sizing in WYSIWYG mode */
+  scaleFactor?: number;
+  /** Max width for the divider block */
+  maxWidth?: number;
 }
 
-export function DividerBlock({ content, styling }: DividerBlockProps) {
+export function DividerBlock({ content, styling, scaleFactor = 1, maxWidth }: DividerBlockProps) {
   const {
     color = '#E5E5EA',
     thickness = 1,
@@ -19,12 +23,14 @@ export function DividerBlock({ content, styling }: DividerBlockProps) {
 
   const containerStyle: ViewStyle = {
     ...getStylingStyles(styling),
-    width: '100%',
+    width: maxWidth || '100%',
     alignItems: 'center',
   };
 
+  const scaledThickness = thickness * scaleFactor;
+
   const dividerLineStyle: ViewStyle = {
-    height: thickness,
+    height: scaledThickness,
     backgroundColor: color,
     width: width === 'full' ? '100%' : `${width}%`,
     borderStyle: dividerStyle,
@@ -33,7 +39,7 @@ export function DividerBlock({ content, styling }: DividerBlockProps) {
   // For dashed/dotted styles, we use border instead
   if (dividerStyle !== 'solid') {
     dividerLineStyle.height = 0;
-    dividerLineStyle.borderBottomWidth = thickness;
+    dividerLineStyle.borderBottomWidth = scaledThickness;
     dividerLineStyle.borderBottomColor = color;
     dividerLineStyle.borderStyle = dividerStyle;
     delete dividerLineStyle.backgroundColor;

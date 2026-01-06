@@ -1,17 +1,19 @@
 import React from 'react';
-import { Image, View, StyleSheet, Dimensions } from 'react-native';
+import { Image, View } from 'react-native';
 import type { ViewStyle, ImageStyle } from 'react-native';
 import type { ImageBlockContent, BlockStyling } from '../../types';
-import { getStylingStyles, scale } from '../../utils/styles';
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+import { getStylingStyles } from '../../utils/styles';
 
 interface ImageBlockProps {
   content: ImageBlockContent;
   styling?: BlockStyling;
+  /** Scale factor for proportional sizing in WYSIWYG mode */
+  scaleFactor?: number;
+  /** Max width for the image block */
+  maxWidth?: number;
 }
 
-export function ImageBlock({ content, styling }: ImageBlockProps) {
+export function ImageBlock({ content, styling, scaleFactor = 1, maxWidth }: ImageBlockProps) {
   const {
     src,
     alt,
@@ -21,18 +23,21 @@ export function ImageBlock({ content, styling }: ImageBlockProps) {
     objectFit = 'cover',
   } = content;
 
-  const containerStyle: ViewStyle = getStylingStyles(styling);
+  const containerStyle: ViewStyle = {
+    ...getStylingStyles(styling),
+    maxWidth: maxWidth,
+  };
 
-  // Calculate dimensions
-  let imageWidth: number | string = '100%';
+  // Calculate dimensions with scaleFactor
+  let imageWidth: number | string = maxWidth || '100%';
   let imageHeight: number | 'auto' = 'auto';
 
   if (typeof width === 'number') {
-    imageWidth = scale(width);
+    imageWidth = width * scaleFactor;
   }
 
   if (typeof height === 'number') {
-    imageHeight = scale(height);
+    imageHeight = height * scaleFactor;
   }
 
   // Map objectFit to React Native resizeMode
@@ -41,7 +46,7 @@ export function ImageBlock({ content, styling }: ImageBlockProps) {
   const imageStyle: ImageStyle = {
     width: typeof imageWidth === 'string' ? imageWidth as ImageStyle['width'] : imageWidth,
     height: imageHeight === 'auto' ? undefined : imageHeight,
-    borderRadius: scale(borderRadius),
+    borderRadius: borderRadius * scaleFactor,
     resizeMode,
   };
 

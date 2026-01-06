@@ -16,6 +16,10 @@ interface InputBlockProps {
   value?: string;
   onChangeValue: (fieldName: string, value: string) => void;
   hasError?: boolean;
+  /** Scale factor for proportional sizing in WYSIWYG mode */
+  scaleFactor?: number;
+  /** Max width for the input block */
+  maxWidth?: number;
 }
 
 // Map input type to keyboard type
@@ -38,6 +42,8 @@ export function InputBlock({
   value = '',
   onChangeValue,
   hasError = false,
+  scaleFactor = 1,
+  maxWidth,
 }: InputBlockProps) {
   const {
     placeholder = '',
@@ -52,28 +58,28 @@ export function InputBlock({
 
   const containerStyle: ViewStyle = {
     ...getStylingStyles(styling),
-    width: '100%',
+    width: maxWidth || '100%',
   };
 
   const inputContainerStyle: ViewStyle = {
     borderWidth: 1,
     borderColor: hasError ? '#FF3B30' : isFocused ? '#007AFF' : '#E5E5EA',
-    borderRadius: scale(12),
+    borderRadius: 12 * scaleFactor,
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: scale(16),
-    paddingVertical: scale(12),
+    paddingHorizontal: 16 * scaleFactor,
+    paddingVertical: 12 * scaleFactor,
   };
 
   const inputStyle: TextStyle = {
-    fontSize: scale(16),
+    fontSize: 16 * scaleFactor,
     color: '#000000',
     padding: 0,
   };
 
   const labelStyle: TextStyle = {
-    fontSize: scale(14),
+    fontSize: 14 * scaleFactor,
     color: '#666666',
-    marginBottom: scale(8),
+    marginBottom: 8 * scaleFactor,
     fontWeight: '500',
   };
 

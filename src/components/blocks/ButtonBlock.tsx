@@ -15,6 +15,10 @@ interface ButtonBlockProps {
   styling?: BlockStyling;
   onPress: (action: ButtonAction) => void;
   disabled?: boolean;
+  /** Scale factor for proportional sizing in WYSIWYG mode */
+  scaleFactor?: number;
+  /** Max width for the button block */
+  maxWidth?: number;
 }
 
 // Default button styles by variant
@@ -77,6 +81,8 @@ export function ButtonBlock({
   styling,
   onPress,
   disabled = false,
+  scaleFactor = 1,
+  maxWidth,
 }: ButtonBlockProps) {
   const {
     text,
@@ -104,16 +110,17 @@ export function ButtonBlock({
   // Get variant styles
   const variantStyle = VARIANT_STYLES[presetConfig?.style?.variant || variant] || VARIANT_STYLES.primary;
 
-  // Calculate styles
+  // Calculate styles with scaleFactor
   const sizeConfig = SIZE_PADDING[size];
 
   const bgColor = backgroundColor || presetConfig?.style?.backgroundColor || variantStyle.bg;
   const txtColor = textColor || presetConfig?.style?.textColor || variantStyle.text;
-  const btnBorderRadius = scale(presetConfig?.style?.borderRadius || borderRadius);
+  const btnBorderRadius = (presetConfig?.style?.borderRadius || borderRadius) * scaleFactor;
 
   const containerStyle: ViewStyle = {
     ...getStylingStyles(styling),
-    width: fullWidth ? '100%' : 'auto',
+    width: fullWidth ? (maxWidth || '100%') : 'auto',
+    maxWidth: maxWidth,
   };
 
   // Check if we should use gradient
@@ -123,8 +130,8 @@ export function ButtonBlock({
     // Only set backgroundColor if not using gradient
     ...(hasGradient ? {} : { backgroundColor: bgColor }),
     borderRadius: btnBorderRadius,
-    paddingHorizontal: scale(paddingHorizontal ?? sizeConfig.h),
-    paddingVertical: scale(paddingVertical ?? sizeConfig.v),
+    paddingHorizontal: (paddingHorizontal ?? sizeConfig.h) * scaleFactor,
+    paddingVertical: (paddingVertical ?? sizeConfig.v) * scaleFactor,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -149,13 +156,13 @@ export function ButtonBlock({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: scale(paddingHorizontal ?? sizeConfig.h),
-    paddingVertical: scale(paddingVertical ?? sizeConfig.v),
+    paddingHorizontal: (paddingHorizontal ?? sizeConfig.h) * scaleFactor,
+    paddingVertical: (paddingVertical ?? sizeConfig.v) * scaleFactor,
   };
 
   const textStyle: TextStyle = {
     color: txtColor,
-    fontSize: scale(fontSize || sizeConfig.fontSize),
+    fontSize: (fontSize || sizeConfig.fontSize) * scaleFactor,
     fontWeight: getFontWeight(fontWeight),
     fontFamily,
     textAlign: 'center',
@@ -175,11 +182,11 @@ export function ButtonBlock({
   const renderContent = () => (
     <>
       {displayIcon && iconPosition === 'left' && (
-        <Text style={[textStyle, styles.iconLeft]}>{displayIcon}</Text>
+        <Text style={[textStyle, { marginRight: 8 * scaleFactor }]}>{displayIcon}</Text>
       )}
       <Text style={textStyle}>{displayText}</Text>
       {displayIcon && iconPosition === 'right' && (
-        <Text style={[textStyle, styles.iconRight]}>{displayIcon}</Text>
+        <Text style={[textStyle, { marginLeft: 8 * scaleFactor }]}>{displayIcon}</Text>
       )}
     </>
   );

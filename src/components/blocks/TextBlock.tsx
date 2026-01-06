@@ -15,6 +15,10 @@ interface TextBlockProps {
   content: TextBlockContent;
   styling?: BlockStyling;
   collectedData?: Record<string, string | string[] | number>;
+  /** Scale factor for proportional sizing in WYSIWYG mode */
+  scaleFactor?: number;
+  /** Max width for the text block */
+  maxWidth?: number;
 }
 
 /**
@@ -58,7 +62,7 @@ function renderRichTextSpans(
   });
 }
 
-export function TextBlock({ content, styling, collectedData = {} }: TextBlockProps) {
+export function TextBlock({ content, styling, collectedData = {}, scaleFactor = 1, maxWidth }: TextBlockProps) {
   const {
     text,
     variant = 'body',
@@ -72,9 +76,9 @@ export function TextBlock({ content, styling, collectedData = {} }: TextBlockPro
     richText,
   } = content;
 
-  // Calculate font size based on variant or custom
+  // Calculate font size based on variant or custom, then scale by scaleFactor
   const baseFontSize = fontSize || getVariantFontSize(variant);
-  const scaledFontSize = scale(baseFontSize);
+  const scaledFontSize = baseFontSize * scaleFactor;
 
   // Calculate font weight based on variant or custom
   const baseWeight = fontWeight
@@ -87,15 +91,18 @@ export function TextBlock({ content, styling, collectedData = {} }: TextBlockPro
     color,
     textAlign: getTextAlign(align),
     fontFamily,
-    lineHeight: lineHeight ? scale(lineHeight * baseFontSize) : undefined,
-    letterSpacing: letterSpacing ? scale(letterSpacing) : undefined,
+    lineHeight: lineHeight ? lineHeight * baseFontSize * scaleFactor : undefined,
+    letterSpacing: letterSpacing ? letterSpacing * scaleFactor : undefined,
     // Apply variant-specific opacity for caption/label
     opacity: variant === 'caption' ? 0.7 : variant === 'label' ? 0.6 : 1,
     // Label variant is uppercase
     textTransform: variant === 'label' ? 'uppercase' : undefined,
   };
 
-  const containerStyle: ViewStyle = getStylingStyles(styling);
+  const containerStyle: ViewStyle = {
+    ...getStylingStyles(styling),
+    maxWidth: maxWidth,
+  };
 
   // Render rich text if available
   if (richText && richText.length > 0) {

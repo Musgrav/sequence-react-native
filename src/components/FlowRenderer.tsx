@@ -19,13 +19,17 @@ import type {
   CollectedData,
 } from '../types';
 import { DESIGN_CANVAS } from '../types';
-import { scale, parseGradient } from '../utils/styles';
+import { scale, parseGradient, scaleX, scaleY } from '../utils/styles';
 import { ContentBlockRenderer } from './ContentBlockRenderer';
 import { FlowProgressBar } from './FlowProgressBar';
 import { Sequence } from '../SequenceClient';
 import { LinearGradient } from './LinearGradient';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+
+// Canvas constants for WYSIWYG rendering
+const EDITOR_CANVAS_WIDTH = DESIGN_CANVAS.width; // 393
+const EDITOR_CANVAS_HEIGHT = DESIGN_CANVAS.height; // 852
 
 interface FlowRendererProps {
   screens: Screen[];
@@ -310,7 +314,33 @@ export function FlowRenderer({
     return style;
   }, [currentScreen]);
 
-  // Render screen content
+  // Calculate scale factors for WYSIWYG rendering
+  const uniformScale = SCREEN_WIDTH / EDITOR_CANVAS_WIDTH;
+  const yScale = SCREEN_HEIGHT / EDITOR_CANVAS_HEIGHT;
+
+  // Max widths for different block types (matching Swift SDK)
+  const textMaxWidth = 280 * uniformScale;
+  const fullWidthMaxWidth = (EDITOR_CANVAS_WIDTH - 48) * uniformScale; // 345px scaled
+
+  // Determine if a block should use full width
+  const getBlockMaxWidth = (block: ContentBlock): number => {
+    switch (block.type) {
+      case 'checklist':
+      case 'input':
+      case 'progress':
+      case 'divider':
+      case 'slider':
+        return fullWidthMaxWidth;
+      case 'button':
+        // Buttons use full width by default
+        const buttonContent = block.content as { fullWidth?: boolean };
+        return buttonContent.fullWidth !== false ? fullWidthMaxWidth : textMaxWidth;
+      default:
+        return textMaxWidth;
+    }
+  };
+
+  // Render screen content using WYSIWYG canvas-based positioning
   const renderScreenContent = () => {
     if (!currentScreen) return null;
 
@@ -321,67 +351,40 @@ export function FlowRenderer({
       return onNativeScreen(currentScreen);
     }
 
-    // Block-based content
+    // Block-based content with WYSIWYG absolute positioning
     if (content.useBlocks && content.blocks) {
-      const sortedBlocks = [...content.blocks].sort((a, b) => a.order - b.order);
-      const pinnedBlocks = sortedBlocks.filter((b) => b.pinToBottom);
-      const flowBlocks = sortedBlocks.filter((b) => !b.pinToBottom);
+      const sortedBlocks = [...content.blocks]
+        .filter((b) => b.visible !== false)
+        .sort((a, b) => a.order - b.order);
+
+      // Calculate default positions for blocks without stored positions
+      const centerX = 24; // 24px padding from left edge in design space
 
       return (
-        <>
-          <ScrollView
-            style={styles.scrollView}
-            contentContainerStyle={[
-              styles.scrollContent,
-              { paddingBottom: pinnedBlocks.length > 0 ? scale(120) : scale(40) },
-            ]}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-          >
-            {flowBlocks.map((block) => (
-              <ContentBlockRenderer
-                key={block.id}
-                block={block}
-                collectedData={collectedData}
-                onDataChange={handleDataChange}
-                onAction={handleAction}
-                currentScreenIndex={currentIndex}
-                totalScreens={screens.length}
-                validationErrors={validationErrors}
-                renderCustomBlock={renderCustomBlock}
-              />
-            ))}
-          </ScrollView>
+        <View style={styles.canvasContainer}>
+          {sortedBlocks.map((block, index) => {
+            // Use stored position or compute default
+            const pos = block.position || {
+              x: block.type === 'icon' ? (EDITOR_CANVAS_WIDTH / 2 - 40) : centerX,
+              y: 150 + index * 70, // Simple vertical stacking for blocks without positions
+            };
 
-          {/* Pinned blocks at bottom */}
-          {pinnedBlocks.length > 0 && (
-            <View
-              style={[
-                styles.pinnedContainer,
-                {
-                  paddingBottom: insets.bottom + scale(20),
-                  // Use screen's background color with opacity, or transparent if gradient
-                  backgroundColor: content.backgroundGradient
-                    ? 'transparent'
-                    : content.backgroundColor
-                    ? `${content.backgroundColor}F2` // ~95% opacity
-                    : 'rgba(255, 255, 255, 0.95)',
-                },
-              ]}
-            >
-              {/* Fade gradient above pinned blocks - only show if there's a solid background */}
-              {!content.backgroundGradient && (
-                <LinearGradient
-                  colors={[
-                    'transparent',
-                    content.backgroundColor || 'rgba(255, 255, 255, 1)',
-                  ]}
-                  style={styles.pinnedFadeGradient}
-                />
-              )}
-              {pinnedBlocks.map((block) => (
+            // Scale the position to device coordinates
+            const scaledX = pos.x * uniformScale;
+            const scaledY = pos.y * yScale;
+            const maxWidth = getBlockMaxWidth(block);
+
+            return (
+              <View
+                key={block.id}
+                style={{
+                  position: 'absolute',
+                  left: scaledX,
+                  top: scaledY,
+                  maxWidth: maxWidth,
+                }}
+              >
                 <ContentBlockRenderer
-                  key={block.id}
                   block={block}
                   collectedData={collectedData}
                   onDataChange={handleDataChange}
@@ -390,11 +393,13 @@ export function FlowRenderer({
                   totalScreens={screens.length}
                   validationErrors={validationErrors}
                   renderCustomBlock={renderCustomBlock}
+                  scaleFactor={uniformScale}
+                  maxWidth={maxWidth}
                 />
-              ))}
-            </View>
-          )}
-        </>
+              </View>
+            );
+          })}
+        </View>
       );
     }
 
@@ -483,6 +488,11 @@ const styles = StyleSheet.create({
   },
   screenContainer: {
     flex: 1,
+  },
+  canvasContainer: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
   },
   scrollView: {
     flex: 1,

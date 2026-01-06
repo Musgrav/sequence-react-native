@@ -7,6 +7,10 @@ import { getStylingStyles, getFontWeight, scale, createShadowStyle } from '../..
 interface FeatureCardBlockProps {
   content: FeatureCardBlockContent;
   styling?: BlockStyling;
+  /** Scale factor for proportional sizing in WYSIWYG mode */
+  scaleFactor?: number;
+  /** Max width for the feature card block */
+  maxWidth?: number;
 }
 
 /**
@@ -15,7 +19,8 @@ interface FeatureCardBlockProps {
 function renderRichTextSpans(
   spans: TextSpan[],
   defaultColor?: string,
-  defaultFontSize?: number
+  defaultFontSize?: number,
+  scaleFactor: number = 1
 ): React.ReactNode[] {
   return spans.map((span, index) => {
     const style: TextStyle = {
@@ -24,7 +29,7 @@ function renderRichTextSpans(
       fontStyle: span.italic ? 'italic' : undefined,
       textDecorationLine: span.underline ? 'underline' : undefined,
       fontFamily: span.fontFamily,
-      fontSize: span.fontSize ? scale(span.fontSize) : defaultFontSize,
+      fontSize: span.fontSize ? span.fontSize * scaleFactor : defaultFontSize,
     };
 
     return (
@@ -35,7 +40,7 @@ function renderRichTextSpans(
   });
 }
 
-export function FeatureCardBlock({ content, styling }: FeatureCardBlockProps) {
+export function FeatureCardBlock({ content, styling, scaleFactor = 1, maxWidth }: FeatureCardBlockProps) {
   const {
     headline,
     headlineRichText,
@@ -60,15 +65,18 @@ export function FeatureCardBlock({ content, styling }: FeatureCardBlockProps) {
     headlineBodyGap = 8,
   } = content;
 
+  // Helper function for scaling
+  const s = (v: number) => v * scaleFactor;
+
   const containerStyle: ViewStyle = {
     ...getStylingStyles(styling),
-    width: '100%',
+    width: maxWidth || '100%',
   };
 
   const cardStyle: ViewStyle = {
     backgroundColor,
-    padding: scale(padding),
-    borderRadius: scale(styling?.borderRadius ?? 16),
+    padding: s(padding),
+    borderRadius: s(styling?.borderRadius ?? 16),
     ...(borderWidth > 0 && {
       borderWidth,
       borderColor: borderColor || '#E5E5EA',
@@ -88,22 +96,22 @@ export function FeatureCardBlock({ content, styling }: FeatureCardBlockProps) {
   }
 
   const headlineStyle: TextStyle = {
-    fontSize: scale(headlineFontSize),
+    fontSize: s(headlineFontSize),
     fontWeight: getFontWeight(headlineFontWeight),
     color: headlineColor,
     fontFamily,
     textAlign: align,
-    lineHeight: lineHeight ? scale(lineHeight * headlineFontSize) : undefined,
+    lineHeight: lineHeight ? s(lineHeight * headlineFontSize) : undefined,
   };
 
   const bodyStyle: TextStyle = {
-    fontSize: scale(bodyFontSize),
+    fontSize: s(bodyFontSize),
     fontWeight: getFontWeight(bodyFontWeight),
     color: bodyColor,
     fontFamily,
     textAlign: align,
-    marginTop: scale(headlineBodyGap),
-    lineHeight: lineHeight ? scale(lineHeight * bodyFontSize) : undefined,
+    marginTop: s(headlineBodyGap),
+    lineHeight: lineHeight ? s(lineHeight * bodyFontSize) : undefined,
   };
 
   return (
@@ -112,14 +120,14 @@ export function FeatureCardBlock({ content, styling }: FeatureCardBlockProps) {
         {(headline || headlineRichText) && (
           <Text style={headlineStyle}>
             {headlineRichText && headlineRichText.length > 0
-              ? renderRichTextSpans(headlineRichText, headlineColor, scale(headlineFontSize))
+              ? renderRichTextSpans(headlineRichText, headlineColor, s(headlineFontSize), scaleFactor)
               : headline}
           </Text>
         )}
         {(body || bodyRichText) && (
           <Text style={bodyStyle}>
             {bodyRichText && bodyRichText.length > 0
-              ? renderRichTextSpans(bodyRichText, bodyColor, scale(bodyFontSize))
+              ? renderRichTextSpans(bodyRichText, bodyColor, s(bodyFontSize), scaleFactor)
               : body}
           </Text>
         )}
