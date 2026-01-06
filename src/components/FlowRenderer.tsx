@@ -443,11 +443,24 @@ export function FlowRenderer({
   }, [currentScreen]);
 
   // Calculate scale factors for WYSIWYG rendering
-  // Matches web FlowRenderer.tsx exactly:
-  // - uniformScale (width-based) for horizontal positioning and most sizing
-  // - yScale for vertical positioning to fill the screen
+  //
+  // CRITICAL: The web editor uses CSS transform to uniformly scale the ENTIRE canvas.
+  // This means positions are stored in design space (393×852) and the whole canvas
+  // is scaled to fit the viewport. To match this behavior in React Native:
+  //
+  // 1. Use uniformScale (width-based) for BOTH X and Y positions
+  //    - This ensures elements maintain their relative positions exactly as in the editor
+  //    - Elements will appear at the correct horizontal AND vertical positions
+  //
+  // 2. The uniformScale is width-based because:
+  //    - Mobile screens have consistent aspect ratios close to the design canvas
+  //    - Width scaling ensures content fits horizontally and doesn't get cut off
+  //    - Vertical content can scroll if needed (but usually fits)
+  //
+  // NOTE: We previously used yScale for Y positions to "fill the screen", but this
+  // caused elements to drift from their designed positions. The correct approach
+  // is uniform scaling for all positions, matching CSS transform behavior.
   const uniformScale = SCREEN_WIDTH / EDITOR_CANVAS_WIDTH;
-  const yScale = SCREEN_HEIGHT / EDITOR_CANVAS_HEIGHT;
 
   // Max widths for different block types (matching Swift SDK and web exactly)
   // Web FlowRenderer: textMaxWidth = 280px, fullWidthMaxWidth = canvas - 48px
@@ -546,10 +559,10 @@ export function FlowRenderer({
             pos = migratePosition(pos);
 
             // Scale the position to device coordinates
-            // X uses uniform scale (width-based) for consistent horizontal positioning
-            // Y uses yScale to fill the screen height properly
+            // CRITICAL: Use uniform scale for BOTH X and Y to match web CSS transform behavior
+            // The web scales the entire canvas uniformly, so we must do the same for positions
             const scaledX = pos.x * uniformScale;
-            const scaledY = pos.y * yScale;
+            const scaledY = pos.y * uniformScale;
             const maxWidth = getBlockMaxWidth(block);
 
             // Get explicit dimensions from styling if set
