@@ -416,11 +416,9 @@ export function FlowRenderer({
             const scaledY = pos.y * yScale;
             const maxWidth = getBlockMaxWidth(block);
 
-            // For full-width blocks (checklist, input, button, etc.), set explicit width
-            // For text-width blocks, let them size to content within maxWidth
-            const buttonContent = block.content as { fullWidth?: boolean };
-            const isFullWidthBlock = ['checklist', 'input', 'progress', 'divider', 'slider'].includes(block.type) ||
-              (block.type === 'button' && buttonContent.fullWidth !== false);
+            // All blocks need explicit width for proper text wrapping in React Native
+            // except icons which should size to content
+            const needsExplicitWidth = block.type !== 'icon';
 
             return (
               <View
@@ -429,10 +427,9 @@ export function FlowRenderer({
                   position: 'absolute',
                   left: scaledX,
                   top: scaledY,
-                  // Full-width blocks get explicit width, text-width blocks get maxWidth constraint
-                  ...(isFullWidthBlock
-                    ? { width: maxWidth }
-                    : { maxWidth: maxWidth }),
+                  // All blocks except icons need explicit width for proper layout
+                  // This ensures text wraps within bounds
+                  ...(needsExplicitWidth && { width: maxWidth }),
                 }}
               >
                 <ContentBlockRenderer
@@ -537,18 +534,23 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FFFFFF',
+    // Ensure content is not clipped at container level
+    overflow: 'visible',
   },
   screenContainer: {
     // Fill entire screen for WYSIWYG positioning
     // Swift SDK uses .frame(maxWidth: .infinity, maxHeight: .infinity).ignoresSafeArea(.all)
     ...StyleSheet.absoluteFillObject,
+    // Ensure content is not clipped
+    overflow: 'visible',
   },
   canvasContainer: {
     // Canvas fills entire screen - blocks are positioned absolutely within
     // Swift SDK: .frame(width: geometry.size.width, height: geometry.size.height, alignment: .topLeading)
-    flex: 1,
-    width: '100%',
-    height: '100%',
+    // IMPORTANT: Use absolute fill to ensure blocks can be positioned anywhere on screen
+    ...StyleSheet.absoluteFillObject,
+    // Ensure content is not clipped
+    overflow: 'visible',
   },
   progressOverlayTop: {
     position: 'absolute',

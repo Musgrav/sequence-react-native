@@ -141,20 +141,29 @@ export function TextBlock({
   // - .frame(maxWidth: maxWidth, alignment: .leading)
   // - Position represents TOP-LEFT of text container
   // - Text naturally sizes to content, maxWidth constrains wrapping
+  //
+  // IMPORTANT: In React Native, we need explicit width for text to wrap properly
+  // The parent View in FlowRenderer already has maxWidth set, so we just need
+  // to ensure text can wrap within that constraint
   const containerStyle: ViewStyle = {
     ...getStylingStyles(styling),
-    // Use width instead of maxWidth to ensure proper text wrapping
-    // Swift SDK: .frame(maxWidth: maxWidth, alignment: .leading)
-    width: maxWidth,
-    // Allow the view to shrink to content if text is shorter
-    alignSelf: 'flex-start',
+    // Let container fill the available width from parent's maxWidth constraint
+    // This ensures text wraps properly within the bounds
+    width: '100%',
+  };
+
+  // Text needs flexShrink to allow wrapping within container
+  const wrappedTextStyle: TextStyle = {
+    ...textStyle,
+    flexShrink: 1,
+    flexWrap: 'wrap',
   };
 
   // Render rich text if available
   if (richText && richText.length > 0) {
     return (
       <View style={containerStyle}>
-        <Text style={textStyle} numberOfLines={0}>
+        <Text style={wrappedTextStyle}>
           {renderRichTextSpans(richText, color, scaledFontSize, scaleFactor)}
         </Text>
       </View>
@@ -166,7 +175,7 @@ export function TextBlock({
 
   return (
     <View style={containerStyle}>
-      <Text style={textStyle} numberOfLines={0}>{displayText}</Text>
+      <Text style={wrappedTextStyle}>{displayText}</Text>
     </View>
   );
 }
