@@ -151,6 +151,8 @@ export function TextBlock({
   const containerStyle: ViewStyle = {
     // Fill the parent's width constraint (set by FlowRenderer)
     width: '100%',
+    // Allow container to grow vertically for multi-line text
+    flexShrink: 0,
     // Apply any styling margins/padding to the container
     ...getStylingStyles(styling),
   };
@@ -159,7 +161,7 @@ export function TextBlock({
   if (richText && richText.length > 0) {
     return (
       <View style={containerStyle}>
-        <Text style={textStyle}>
+        <Text style={textStyle} numberOfLines={0}>
           {renderRichTextSpans(richText, color, scaledFontSize, scaleFactor)}
         </Text>
       </View>
@@ -170,9 +172,12 @@ export function TextBlock({
   const displayText = interpolateText(text, collectedData);
 
   // Wrap Text in View that fills parent width - ensures proper text wrapping
+  // numberOfLines={0} explicitly allows unlimited lines (React Native default but being explicit)
   return (
     <View style={containerStyle}>
-      <Text style={textStyle}>{displayText}</Text>
+      <Text style={textStyle} numberOfLines={0}>
+        {displayText}
+      </Text>
     </View>
   );
 }

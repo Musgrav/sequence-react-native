@@ -384,8 +384,13 @@ export function ContentBlockRenderer({
   };
 
   // Container style - combines animation and styling transforms properly
+  // CRITICAL: For text wrapping to work in React Native with absolute positioning:
+  // - width: '100%' fills the parent's width (set in FlowRenderer)
+  // - flexShrink: 0 prevents the container from shrinking
+  // - This allows text to wrap and grow vertically
   const containerStyle: ViewStyle = {
     width: '100%',
+    flexShrink: 0,
   };
 
   // Get animation style
