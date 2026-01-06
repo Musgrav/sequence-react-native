@@ -477,32 +477,29 @@ export function FlowRenderer({
     };
   }, [needsMigration]);
 
-  // Determine if a block should use full width
-  // IMPORTANT: This must match Swift SDK's OnboardingView.swift and web FlowRenderer exactly
-  // Full-width blocks: checklist, input, slider, progress, divider, spacer, button (with fullWidth=true)
-  // Text-width blocks: text, icon, image
+  // Determine maxWidth for each block type
+  // IMPORTANT: This must match Swift SDK's OnboardingView.swift exactly
+  //
+  // Swift SDK logic (lines 419-426):
+  // - checklist, input, progress, divider → fullWidthMaxWidth (345px)
+  // - all others (text, button, icon, image, spacer) → textMaxWidth (280px)
+  //
+  // Button fullWidth behavior:
+  // - The maxWidth passed to ButtonBlockView is textMaxWidth (280)
+  // - fullWidth=true buttons expand to fill that 280px container
+  // - fullWidth=false buttons size to content within 280px
   const getBlockMaxWidth = useCallback((block: ContentBlock): number => {
     switch (block.type) {
+      // Full-width blocks: use fullWidthMaxWidth (345px scaled)
       case 'checklist':
       case 'input':
       case 'progress':
       case 'divider':
       case 'slider':
-      case 'spacer':
         return fullWidthMaxWidth;
-      case 'button':
-        // Buttons with fullWidth=true (default) should use full width
-        const buttonContent = block.content as { fullWidth?: boolean };
-        return buttonContent.fullWidth !== false ? fullWidthMaxWidth : textMaxWidth;
-      case 'text':
-        // Check for explicit width in styling
-        if (block.styling?.width && typeof block.styling.width === 'number') {
-          return block.styling.width * uniformScale;
-        }
-        // Swift SDK: textMaxWidth = 280 * uniformScale
-        // Text alignment is handled by textAlign within this container
-        return textMaxWidth;
-      // Icon, image use text width
+
+      // All other blocks use textMaxWidth (280px scaled)
+      // This includes: text, button, icon, image, spacer, feature-card
       default:
         // Check for explicit width in styling
         if (block.styling?.width && typeof block.styling.width === 'number') {
@@ -563,15 +560,17 @@ export function FlowRenderer({
               ? block.styling.height * uniformScale
               : undefined;
 
-            // Determine if block needs explicit width
-            // Icons should NOT have explicit width to size naturally
-            const needsExplicitWidth = block.type !== 'icon';
-
-            // Calculate effective width - matching Swift SDK exactly
-            // Swift: .frame(maxWidth: blockMaxWidth, alignment: .leading)
-            // The position (x, y) represents TOP-LEFT of the block
-            // Text alignment within is handled by textAlign property
-            const effectiveWidth = blockWidth ?? (needsExplicitWidth ? maxWidth : undefined);
+            // Determine if block needs explicit width vs maxWidth
+            // - Text blocks: use maxWidth (allows natural sizing up to limit)
+            // - Full-width blocks (buttons, inputs, etc.): use explicit width
+            // - Icons: no width constraint (size naturally)
+            //
+            // CRITICAL: Web uses width: fit-content; max-width: 280px for text
+            // This means text sizes to content but won't exceed 280px
+            // React Native equivalent: use maxWidth without explicit width
+            const isTextBlock = block.type === 'text';
+            const isIconBlock = block.type === 'icon';
+            const needsFixedWidth = !isTextBlock && !isIconBlock;
 
             return (
               <View
@@ -580,10 +579,13 @@ export function FlowRenderer({
                   position: 'absolute',
                   left: scaledX,
                   top: scaledY,
-                  // Apply width: Swift uses .frame(maxWidth: blockMaxWidth, alignment: .leading)
+                  // Apply explicit dimensions from styling if set
                   ...(blockWidth !== undefined && { width: blockWidth }),
                   ...(blockHeight !== undefined && { height: blockHeight }),
-                  ...(needsExplicitWidth && blockWidth === undefined && { width: effectiveWidth }),
+                  // Text blocks: use maxWidth (allows natural sizing like web's fit-content + max-width)
+                  // Other blocks: use explicit width for full-width behavior
+                  ...(isTextBlock && blockWidth === undefined && { maxWidth: maxWidth }),
+                  ...(needsFixedWidth && blockWidth === undefined && { width: maxWidth }),
                   zIndex: 1,
                   // Allow content to overflow vertically for multi-line text
                   overflow: 'visible',

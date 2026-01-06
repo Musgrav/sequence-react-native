@@ -383,13 +383,19 @@ export function ContentBlockRenderer({
     }
   };
 
-  // Container style - combines animation and styling transforms properly
-  // CRITICAL: For text wrapping to work in React Native with absolute positioning:
-  // - width: '100%' fills the parent's width (set in FlowRenderer)
-  // - flexShrink: 0 prevents the container from shrinking
-  // - This allows text to wrap and grow vertically
+  // Container style - different for text vs other blocks
+  // - Text blocks: no fixed width, allow natural sizing (like CSS fit-content)
+  // - Other blocks: width: 100% to fill parent container
+  //
+  // This matches web behavior where text uses fit-content + max-width
+  // while other blocks (buttons, inputs) fill their container
+  const isTextBlock = type === 'text';
+  const isIconBlock = type === 'icon';
+  const shouldSizeNaturally = isTextBlock || isIconBlock;
+
   const containerStyle: ViewStyle = {
-    width: '100%',
+    // Text/icon: size naturally; others: fill parent
+    ...(shouldSizeNaturally ? {} : { width: '100%' }),
     flexShrink: 0,
   };
 
