@@ -443,24 +443,18 @@ export function FlowRenderer({
   }, [currentScreen]);
 
   // Calculate scale factors for WYSIWYG rendering
+  // This MUST match the Swift SDK exactly (OnboardingView.swift lines 366-374)
   //
-  // CRITICAL: The web editor uses CSS transform to uniformly scale the ENTIRE canvas.
-  // This means positions are stored in design space (393×852) and the whole canvas
-  // is scaled to fit the viewport. To match this behavior in React Native:
+  // Scale factors:
+  // - uniformScale (width-based): Used for X positions and all sizing (fonts, padding, widths)
+  // - yScale (height-based): Used ONLY for Y positions to fill screen height
   //
-  // 1. Use uniformScale (width-based) for BOTH X and Y positions
-  //    - This ensures elements maintain their relative positions exactly as in the editor
-  //    - Elements will appear at the correct horizontal AND vertical positions
-  //
-  // 2. The uniformScale is width-based because:
-  //    - Mobile screens have consistent aspect ratios close to the design canvas
-  //    - Width scaling ensures content fits horizontally and doesn't get cut off
-  //    - Vertical content can scroll if needed (but usually fits)
-  //
-  // NOTE: We previously used yScale for Y positions to "fill the screen", but this
-  // caused elements to drift from their designed positions. The correct approach
-  // is uniform scaling for all positions, matching CSS transform behavior.
+  // This asymmetric scaling ensures:
+  // 1. Horizontal positioning is proportionally correct (using screen width ratio)
+  // 2. Vertical positioning fills the screen height (using screen height ratio)
+  // 3. All sizes (fonts, padding, widths) scale proportionally with width
   const uniformScale = SCREEN_WIDTH / EDITOR_CANVAS_WIDTH;
+  const yScale = SCREEN_HEIGHT / EDITOR_CANVAS_HEIGHT;
 
   // Max widths for different block types (matching Swift SDK and web exactly)
   // Web FlowRenderer: textMaxWidth = 280px, fullWidthMaxWidth = canvas - 48px
@@ -559,10 +553,11 @@ export function FlowRenderer({
             pos = migratePosition(pos);
 
             // Scale the position to device coordinates
-            // CRITICAL: Use uniform scale for BOTH X and Y to match web CSS transform behavior
-            // The web scales the entire canvas uniformly, so we must do the same for positions
+            // MUST match Swift SDK exactly (OnboardingView.swift line 413-414):
+            // - X uses uniformScale (width-based) for consistent horizontal positioning
+            // - Y uses yScale (height-based) to fill the screen height
             const scaledX = pos.x * uniformScale;
-            const scaledY = pos.y * uniformScale;
+            const scaledY = pos.y * yScale;
             const maxWidth = getBlockMaxWidth(block);
 
             // Get explicit dimensions from styling if set
@@ -573,16 +568,16 @@ export function FlowRenderer({
               ? block.styling.height * uniformScale
               : undefined;
 
-            // Determine width for each block type
-            // CRITICAL: React Native Text REQUIRES explicit width to wrap text.
-            // Unlike CSS where maxWidth triggers wrapping, RN Text only wraps when
-            // the container has a specific width constraint.
+            // IMPORTANT: Match web/Swift behavior exactly!
             //
-            // All blocks (including text) need explicit width for proper rendering:
-            // - Text blocks: need width for text wrapping
-            // - Button/input blocks: need width to fill their container
-            // - Icon blocks: can size naturally (no width)
-            const isIconBlock = block.type === 'icon';
+            // Web BlockRenderer: positioned container has NO width unless explicit styling
+            // The block content handles its own max-width (e.g., text has max-w-[280px])
+            //
+            // Swift BlockView: uses .offset() with no width constraint on container
+            // Each block type handles its own frame(maxWidth:)
+            //
+            // React Native: We pass maxWidth to block components, but DON'T force width
+            // on the positioned container. This allows blocks to size naturally.
 
             return (
               <View
@@ -591,14 +586,12 @@ export function FlowRenderer({
                   position: 'absolute',
                   left: scaledX,
                   top: scaledY,
-                  // Apply explicit dimensions from styling if set
+                  // Only apply explicit dimensions from styling if set
+                  // Do NOT force width on all blocks - let them size naturally
                   ...(blockWidth !== undefined && { width: blockWidth }),
                   ...(blockHeight !== undefined && { height: blockHeight }),
-                  // All blocks except icons need explicit width for proper rendering
-                  // Text needs it for wrapping, buttons need it for full-width behavior
-                  ...(!isIconBlock && blockWidth === undefined && { width: maxWidth }),
                   zIndex: 1,
-                  // Allow content to overflow vertically for multi-line text
+                  // Allow content to overflow
                   overflow: 'visible',
                 }}
               >

@@ -383,14 +383,20 @@ export function ContentBlockRenderer({
     }
   };
 
-  // Container style - all blocks fill their parent width except icons
-  // The parent View in FlowRenderer sets the width constraint
-  // This Animated.View fills that constraint so children can use width: 100%
+  // Container style - matches Swift SDK behavior
+  //
+  // Swift SDK: Block views size to their content up to maxWidth
+  // The parent uses .offset() for positioning with no width constraint
+  //
+  // In React Native:
+  // - Icons size naturally (no width)
+  // - Other blocks use maxWidth to constrain their width
+  // - This matches Swift's .frame(maxWidth:) behavior
   const isIconBlock = type === 'icon';
 
   const containerStyle: ViewStyle = {
-    // Icons size naturally; all others fill parent
-    ...(isIconBlock ? {} : { width: '100%' }),
+    // Icons size naturally; all others use maxWidth
+    ...(isIconBlock ? {} : { width: maxWidth }),
     flexShrink: 0,
   };
 

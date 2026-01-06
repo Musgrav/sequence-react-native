@@ -139,23 +139,22 @@ export function TextBlock({
     letterSpacing: letterSpacing ? s(letterSpacing) : undefined,
   };
 
-  // Text block rendering approach:
-  // CRITICAL: React Native Text requires the parent to have explicit width for text to wrap.
-  // The FlowRenderer sets width on the positioning container (280px for text blocks).
-  // This View fills that container (width: 100%), and Text wraps within it.
+  // Text block rendering - matches Swift SDK's TextBlockView exactly
   //
-  // Container View:
-  // - width: 100% fills the parent's width constraint
-  // - flexShrink: 0 prevents unwanted shrinking
+  // Swift SDK uses: .frame(maxWidth: maxWidth, alignment: .leading)
   //
-  // Text component:
-  // - textAlign handles alignment within the container
-  // - No width on Text itself - it fills available width and wraps
+  // In React Native, Text REQUIRES explicit width on parent for text wrapping.
+  // We use the passed maxWidth to constrain the text container.
+  //
+  // IMPORTANT: textAlign handles text alignment WITHIN the container
+  // The position (left/top) from FlowRenderer determines where the container appears
 
   // Get styling styles
   const stylingStyles = getStylingStyles(styling);
 
   // Container style - fills parent width for text wrapping
+  // The parent (ContentBlockRenderer) already has width: maxWidth set
+  // So we use width: '100%' to fill that constraint
   const containerStyle: ViewStyle = {
     width: '100%',
     flexShrink: 0,
