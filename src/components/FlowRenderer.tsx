@@ -499,9 +499,9 @@ export function FlowRenderer({
         if (block.styling?.width && typeof block.styling.width === 'number') {
           return block.styling.width * uniformScale;
         }
-        // For text blocks, use full width to allow proper centering and wrapping
-        // The text alignment property handles visual centering within this width
-        return fullWidthMaxWidth;
+        // Swift SDK: textMaxWidth = 280 * uniformScale
+        // Text alignment is handled by textAlign within this container
+        return textMaxWidth;
       // Icon, image use text width
       default:
         // Check for explicit width in styling
@@ -567,36 +567,23 @@ export function FlowRenderer({
             // Icons should NOT have explicit width to size naturally
             const needsExplicitWidth = block.type !== 'icon';
 
-            // Calculate effective width for clipping prevention
+            // Calculate effective width - matching Swift SDK exactly
+            // Swift: .frame(maxWidth: blockMaxWidth, alignment: .leading)
+            // The position (x, y) represents TOP-LEFT of the block
+            // Text alignment within is handled by textAlign property
             const effectiveWidth = blockWidth ?? (needsExplicitWidth ? maxWidth : undefined);
-
-            // For text and button blocks, always use full width with standard padding
-            // This ensures centered text renders correctly and buttons span the expected width
-            let adjustedWidth = effectiveWidth;
-            let adjustedX = scaledX;
-            const standardPadding = 24 * uniformScale;
-
-            if (block.type === 'text' || block.type === 'button') {
-              // Use full width with padding for text and buttons
-              // This ensures they can center properly and not get clipped
-              adjustedX = standardPadding;
-              adjustedWidth = SCREEN_WIDTH - (standardPadding * 2);
-            } else if (effectiveWidth !== undefined && scaledX + effectiveWidth > SCREEN_WIDTH) {
-              // For other blocks, just prevent overflow
-              adjustedWidth = SCREEN_WIDTH - scaledX - (8 * uniformScale);
-            }
 
             return (
               <View
                 key={block.id}
                 style={{
                   position: 'absolute',
-                  left: adjustedX,
+                  left: scaledX,
                   top: scaledY,
-                  // Apply adjusted width to prevent clipping
-                  ...(blockWidth !== undefined && { width: adjustedWidth }),
+                  // Apply width: Swift uses .frame(maxWidth: blockMaxWidth, alignment: .leading)
+                  ...(blockWidth !== undefined && { width: blockWidth }),
                   ...(blockHeight !== undefined && { height: blockHeight }),
-                  ...(needsExplicitWidth && blockWidth === undefined && { width: adjustedWidth }),
+                  ...(needsExplicitWidth && blockWidth === undefined && { width: effectiveWidth }),
                   zIndex: 1,
                   // Allow content to overflow vertically for multi-line text
                   overflow: 'visible',
